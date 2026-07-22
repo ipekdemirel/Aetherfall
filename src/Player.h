@@ -14,5 +14,17 @@ public:
 
 private:
     Vector3 position;
-    float movementSpeed;
+    Vector3 facingDirection;
+
+    float walkSpeed;
+    float runSpeed;
+
+    float dashSpeed;
+    float dashDuration;
+    float dashTimer;
+
+    float dashCooldown;
+    float dashCooldownTimer;
+
+    bool isDashing;
 };
