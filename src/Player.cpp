@@ -18,6 +18,13 @@ Player::Player()
 
 void Player::Update(float deltaTime)
 {
+    weapon.Update(deltaTime);
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    {
+        weapon.StartAttack();
+    }
+
     if (dashCooldownTimer > 0.0f)
     {
         dashCooldownTimer -= deltaTime;
@@ -125,6 +132,31 @@ void Player::Draw() const
         0.75f,
         GOLD
     );
+
+    if (weapon.IsAttacking())
+    {
+        const Vector3 attackPosition{
+            position.x + facingDirection.x * 1.5f,
+            position.y,
+            position.z + facingDirection.z * 1.5f
+        };
+
+        DrawCube(
+            attackPosition,
+            0.35f,
+            0.35f,
+            2.0f,
+            RED
+        );
+
+        DrawCubeWires(
+            attackPosition,
+            0.35f,
+            0.35f,
+            2.0f,
+            MAROON
+        );
+    }
 }
 
 Vector3 Player::GetPosition() const

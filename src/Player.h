@@ -2,6 +2,8 @@
 
 #include <raylib.h>
 
+#include "Weapon.h"
+
 class Player
 {
 public:
@@ -27,4 +29,6 @@ private:
     float dashCooldownTimer;
 
     bool isDashing;
+
+    Weapon weapon;
 };
