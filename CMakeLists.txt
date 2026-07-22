@@ -1,0 +1,64 @@
+cmake_minimum_required(VERSION 3.20)
+
+project(Aetherfall
+    VERSION 0.1.0
+    LANGUAGES C CXX
+)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+include(FetchContent)
+
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    raylib
+    GIT_REPOSITORY https://github.com/raysan5/raylib.git
+    GIT_TAG 5.5
+    GIT_SHALLOW TRUE
+)
+
+message(STATUS "========== RAYLIB FETCH BASLIYOR ==========")
+
+FetchContent_MakeAvailable(raylib)
+
+message(STATUS "========== RAYLIB FETCH BITTI ==========")
+
+add_executable(Aetherfall
+    src/main.cpp
+)
+
+target_link_libraries(Aetherfall
+    PRIVATE
+    raylib
+)
+
+if (MSVC)
+    target_compile_options(Aetherfall PRIVATE /W4)
+else()
+    target_compile_options(Aetherfall PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+set_target_properties(Aetherfall PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
+
+foreach(CONFIG Debug Release RelWithDebInfo MinSizeRel)
+    string(TOUPPER "${CONFIG}" CONFIG_UPPER)
+
+    set_target_properties(Aetherfall PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER}
+        "${CMAKE_BINARY_DIR}/bin/${CONFIG}"
+    )
+endforeach()
+
+add_custom_command(
+    TARGET Aetherfall
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/assets"
+            "$<TARGET_FILE_DIR:Aetherfall>/assets"
+)
