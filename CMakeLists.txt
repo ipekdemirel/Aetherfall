@@ -21,14 +21,17 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-message(STATUS "========== RAYLIB FETCH BASLIYOR ==========")
-
 FetchContent_MakeAvailable(raylib)
-
-message(STATUS "========== RAYLIB FETCH BITTI ==========")
 
 add_executable(Aetherfall
     src/main.cpp
+    src/Player.cpp
+    src/Player.h
+)
+
+target_include_directories(Aetherfall
+    PRIVATE
+    "${CMAKE_SOURCE_DIR}/src"
 )
 
 target_link_libraries(Aetherfall
@@ -39,7 +42,13 @@ target_link_libraries(Aetherfall
 if (MSVC)
     target_compile_options(Aetherfall PRIVATE /W4)
 else()
-    target_compile_options(Aetherfall PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(
+        Aetherfall
+        PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+    )
 endif()
 
 set_target_properties(Aetherfall PROPERTIES
