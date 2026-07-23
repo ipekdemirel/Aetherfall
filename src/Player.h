@@ -13,6 +13,11 @@ public:
     void Draw() const;
 
     Vector3 GetPosition() const;
+    Vector3 GetFacingDirection() const;
+
+    bool IsAttacking() const;
+
+    float GetAttackProgress() const;
 
 private:
     Vector3 position;

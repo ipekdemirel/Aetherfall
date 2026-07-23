@@ -27,7 +27,11 @@ add_executable(Aetherfall
     src/main.cpp
     src/Player.cpp
     src/Player.h
- "src/Weapon.cpp" "src/Weapon.h")
+    src/Weapon.cpp
+    src/Weapon.h
+    src/Enemy.cpp
+    src/Enemy.h
+)
 
 target_include_directories(Aetherfall
     PRIVATE

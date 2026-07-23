@@ -10,8 +10,11 @@ public:
 
     bool IsAttacking() const;
 
+    float GetAttackProgress() const;
+
 private:
     bool attacking;
+
     float attackTimer;
     float attackDuration;
 };

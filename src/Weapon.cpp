@@ -34,3 +34,13 @@ bool Weapon::IsAttacking() const
 {
     return attacking;
 }
+
+float Weapon::GetAttackProgress() const
+{
+    if (!attacking)
+    {
+        return 0.0f;
+    }
+
+    return 1.0f - (attackTimer / attackDuration);
+}
