@@ -31,7 +31,8 @@ add_executable(Aetherfall
     src/Weapon.h
     src/Enemy.cpp
     src/Enemy.h
-)
+    src/UI.cpp
+ "src/CombatSystem.h")
 
 target_include_directories(Aetherfall
     PRIVATE

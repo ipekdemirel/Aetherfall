@@ -3,6 +3,7 @@
 
 #include "Enemy.h"
 #include "Player.h"
+#include "UI.h"
 
 int main()
 {
@@ -44,17 +45,27 @@ int main()
 
     bool attackWasActive = false;
 
+    float cameraShakeTime = 0.0f;
+
+    const float cameraShakeDuration = 0.10f;
+    const float cameraShakeStrength = 0.18f;
+
     while (!WindowShouldClose())
     {
         const float deltaTime = GetFrameTime();
 
         player.Update(deltaTime);
 
-        const Vector3 playerPosition = player.GetPosition();
+        const Vector3 playerPosition =
+            player.GetPosition();
 
-        enemy.Update(deltaTime, playerPosition);
+        enemy.Update(
+            deltaTime,
+            playerPosition
+        );
 
-        const bool attackIsActive = player.IsAttacking();
+        const bool attackIsActive =
+            player.IsAttacking();
 
         if (
             attackIsActive &&
@@ -62,31 +73,46 @@ int main()
             enemy.IsAlive()
             )
         {
-            const Vector3 enemyPosition = enemy.GetPosition();
+            const Vector3 enemyPosition =
+                enemy.GetPosition();
 
-            const Vector3 playerToEnemy = Vector3Subtract(
-                enemyPosition,
-                playerPosition
-            );
+            const Vector3 playerToEnemy =
+                Vector3Subtract(
+                    enemyPosition,
+                    playerPosition
+                );
 
-            const float distanceToEnemy = Vector3Length(
-                playerToEnemy
-            );
-
-            if (distanceToEnemy <= attackRange)
-            {
-                const Vector3 directionToEnemy = Vector3Normalize(
+            const float distanceToEnemy =
+                Vector3Length(
                     playerToEnemy
                 );
 
-                const float facingAmount = Vector3DotProduct(
-                    player.GetFacingDirection(),
-                    directionToEnemy
-                );
+            if (distanceToEnemy <= attackRange)
+            {
+                const Vector3 directionToEnemy =
+                    Vector3Normalize(
+                        playerToEnemy
+                    );
+
+                const float facingAmount =
+                    Vector3DotProduct(
+                        player.GetFacingDirection(),
+                        directionToEnemy
+                    );
 
                 if (facingAmount > 0.35f)
                 {
-                    enemy.TakeDamage(attackDamage);
+                    enemy.TakeDamage(
+                        attackDamage
+                    );
+
+                    enemy.ApplyKnockback(
+                        directionToEnemy,
+                        5.0f
+                    );
+
+                    cameraShakeTime =
+                        cameraShakeDuration;
                 }
             }
         }
@@ -117,6 +143,26 @@ int main()
             cameraFollowSpeed * deltaTime
         );
 
+        if (cameraShakeTime > 0.0f)
+        {
+            cameraShakeTime -= deltaTime;
+
+            camera.position.x +=
+                GetRandomValue(-100, 100) /
+                100.0f *
+                cameraShakeStrength;
+
+            camera.position.y +=
+                GetRandomValue(-100, 100) /
+                100.0f *
+                cameraShakeStrength;
+
+            if (cameraShakeTime < 0.0f)
+            {
+                cameraShakeTime = 0.0f;
+            }
+        }
+
         BeginDrawing();
 
         ClearBackground(
@@ -141,132 +187,12 @@ int main()
 
         EndMode3D();
 
-        if (enemy.IsAlive())
-        {
-            const Vector3 healthBarWorldPosition{
-                enemy.GetPosition().x,
-                enemy.GetPosition().y + 1.8f,
-                enemy.GetPosition().z
-            };
-
-            const Vector2 healthBarScreenPosition = GetWorldToScreen(
-                healthBarWorldPosition,
-                camera
-            );
-
-            const float healthPercentage =
-                enemy.GetHealth() / enemy.GetMaxHealth();
-
-            const float healthBarWidth = 100.0f;
-            const float healthBarHeight = 12.0f;
-
-            const float healthBarX =
-                healthBarScreenPosition.x -
-                healthBarWidth / 2.0f;
-
-            const float healthBarY =
-                healthBarScreenPosition.y -
-                healthBarHeight / 2.0f;
-
-            DrawRectangle(
-                static_cast<int>(healthBarX - 2.0f),
-                static_cast<int>(healthBarY - 2.0f),
-                static_cast<int>(healthBarWidth + 4.0f),
-                static_cast<int>(healthBarHeight + 4.0f),
-                BLACK
-            );
-
-            DrawRectangle(
-                static_cast<int>(healthBarX),
-                static_cast<int>(healthBarY),
-                static_cast<int>(healthBarWidth),
-                static_cast<int>(healthBarHeight),
-                DARKGRAY
-            );
-
-            DrawRectangle(
-                static_cast<int>(healthBarX),
-                static_cast<int>(healthBarY),
-                static_cast<int>(
-                    healthBarWidth * healthPercentage
-                    ),
-                static_cast<int>(healthBarHeight),
-                GREEN
-            );
-
-            const int healthText = static_cast<int>(
-                enemy.GetHealth()
-                );
-
-            const char* healthLabel = TextFormat(
-                "%d / %d",
-                healthText,
-                static_cast<int>(enemy.GetMaxHealth())
-            );
-
-            const int healthTextWidth = MeasureText(
-                healthLabel,
-                16
-            );
-
-            DrawText(
-                healthLabel,
-                static_cast<int>(
-                    healthBarScreenPosition.x -
-                    healthTextWidth / 2
-                    ),
-                static_cast<int>(
-                    healthBarY - 22.0f
-                    ),
-                16,
-                BLACK
-            );
-        }
-
-        DrawText(
-            "AETHERFALL",
-            20,
-            20,
-            28,
-            BLACK
+        UI::DrawEnemyHealthBar(
+            enemy,
+            camera
         );
 
-        DrawText(
-            "WASD: Move",
-            20,
-            58,
-            20,
-            DARKGRAY
-        );
-
-        DrawText(
-            "LEFT SHIFT: Run",
-            20,
-            86,
-            20,
-            DARKGRAY
-        );
-
-        DrawText(
-            "SPACE: Dash",
-            20,
-            114,
-            20,
-            DARKGRAY
-        );
-
-        DrawText(
-            "LEFT MOUSE: Attack",
-            20,
-            142,
-            20,
-            DARKGRAY
-        );
-
-        DrawFPS(
-            GetScreenWidth() - 100,
-            20
-        );
+        UI::DrawHUD();
 
         EndDrawing();
     }

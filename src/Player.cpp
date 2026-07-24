@@ -138,7 +138,7 @@ void Player::Draw() const
         GOLD
     );
 
-    // Oyuncunun baktığı yönün sağ tarafını hesaplar.
+    // Oyuncunun baktığı yönün sağ tarafı.
     const Vector3 rightDirection{
         -facingDirection.z,
         0.0f,
@@ -150,19 +150,22 @@ void Player::Draw() const
     float forwardOffset = 0.15f;
     float sideOffset = 0.55f;
 
+    float attackProgress = 0.0f;
+    float attackPower = 0.0f;
+
     if (weapon.IsAttacking())
     {
-        const float attackProgress = weapon.GetAttackProgress();
+        attackProgress = weapon.GetAttackProgress();
 
-        // 0 -> 1 -> 0 şeklinde ilerleyen yumuşak saldırı hareketi.
-        const float attackPower = sinf(attackProgress * PI);
+        // Saldırının başında 0, ortasında 1, sonunda tekrar 0 olur.
+        attackPower = sinf(attackProgress * PI);
 
         forwardOffset += attackPower * 1.0f;
         sideOffset -= attackPower * 0.25f;
 
-        // Kılıca hafif bir sağdan sola savurma hareketi verir.
+        // Kılıcı sağdan sola doğru döndürür.
         const float swingAngle =
-            (-0.9f + attackProgress * 1.8f);
+            -0.9f + attackProgress * 1.8f;
 
         const float cosAngle = cosf(swingAngle);
         const float sinAngle = sinf(swingAngle);
@@ -208,6 +211,135 @@ void Player::Draw() const
         bladeStart.z + swordDirection.z * 1.45f
     };
 
+    // ---------------------------------------------------------
+    // SLASH EFFECT
+    // ---------------------------------------------------------
+    // Efekt kılıçtan önce çizilir. Böylece kılıç efektin üzerinde kalır.
+    if (weapon.IsAttacking())
+    {
+        const int trailCount = 7;
+
+        for (int trailIndex = trailCount; trailIndex >= 1; --trailIndex)
+        {
+            const float trailDelay =
+                static_cast<float>(trailIndex) * 0.055f;
+
+            const float trailProgress = Clamp(
+                attackProgress - trailDelay,
+                0.0f,
+                1.0f
+            );
+
+            const float trailAngle =
+                -0.9f + trailProgress * 1.8f;
+
+            const float trailCos = cosf(trailAngle);
+            const float trailSin = sinf(trailAngle);
+
+            Vector3 trailDirection{
+                facingDirection.x * trailCos -
+                    facingDirection.z * trailSin,
+
+                0.0f,
+
+                facingDirection.x * trailSin +
+                    facingDirection.z * trailCos
+            };
+
+            trailDirection = Vector3Normalize(trailDirection);
+
+            const float trailPower =
+                sinf(trailProgress * PI);
+
+            const float trailForwardOffset =
+                0.15f + trailPower * 1.0f;
+
+            const float trailSideOffset =
+                0.55f - trailPower * 0.25f;
+
+            const Vector3 trailHandPosition{
+                position.x +
+                    rightDirection.x * trailSideOffset +
+                    facingDirection.x * trailForwardOffset,
+
+                position.y + 0.45f,
+
+                position.z +
+                    rightDirection.z * trailSideOffset +
+                    facingDirection.z * trailForwardOffset
+            };
+
+            const Vector3 trailStart{
+                trailHandPosition.x +
+                    trailDirection.x * 0.65f,
+
+                trailHandPosition.y,
+
+                trailHandPosition.z +
+                    trailDirection.z * 0.65f
+            };
+
+            const Vector3 trailEnd{
+                trailStart.x +
+                    trailDirection.x * 1.45f,
+
+                trailStart.y,
+
+                trailStart.z +
+                    trailDirection.z * 1.45f
+            };
+
+            const float trailVisibility =
+                1.0f -
+                static_cast<float>(trailIndex) /
+                static_cast<float>(trailCount + 1);
+
+            const unsigned char trailAlpha =
+                static_cast<unsigned char>(
+                    95.0f *
+                    trailVisibility *
+                    attackPower
+                    );
+
+            const Color trailColor{
+                180,
+                235,
+                255,
+                trailAlpha
+            };
+
+            DrawCylinderEx(
+                trailStart,
+                trailEnd,
+                0.16f,
+                0.04f,
+                8,
+                trailColor
+            );
+        }
+
+        // Kılıç ucundaki kısa süreli parlama.
+        const unsigned char glowAlpha =
+            static_cast<unsigned char>(
+                180.0f * attackPower
+                );
+
+        DrawSphere(
+            bladeEnd,
+            0.16f + attackPower * 0.10f,
+            Color{
+                220,
+                245,
+                255,
+                glowAlpha
+            }
+        );
+    }
+
+    // ---------------------------------------------------------
+    // SWORD
+    // ---------------------------------------------------------
+
     // Kabza
     DrawCylinderEx(
         handPosition,
@@ -250,7 +382,7 @@ void Player::Draw() const
         LIGHTGRAY
     );
 
-    // Bıçağın dış çizgisine benzeyen koyu bölüm
+    // Bıçağın koyu dış çizgisi
     DrawCylinderWiresEx(
         bladeStart,
         bladeEnd,

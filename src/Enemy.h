@@ -12,6 +12,9 @@ public:
 
     void TakeDamage(float damage);
 
+    // Yeni
+    void ApplyKnockback(Vector3 direction, float force);
+
     bool IsAlive() const;
 
     Vector3 GetPosition() const;
@@ -22,9 +25,15 @@ public:
 private:
     Vector3 position;
 
+    // Yeni
+    Vector3 knockbackVelocity;
+
     float moveSpeed;
     float health;
     float maxHealth;
+
+    float hitFlashTimer;
+    float hitFlashDuration;
 
     bool alive;
 };
