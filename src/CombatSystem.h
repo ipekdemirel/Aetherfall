@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 class Player;
 class Enemy;
 
@@ -11,7 +13,7 @@ public:
     void Update(
         float deltaTime,
         Player& player,
-        Enemy& enemy
+        std::vector<Enemy>& enemies
     );
 
     bool ConsumeCameraShakeRequest();
@@ -19,13 +21,13 @@ public:
 private:
     void HandlePlayerAttack(
         Player& player,
-        Enemy& enemy
+        std::vector<Enemy>& enemies
     );
 
-    void HandleEnemyAttack(
+    void HandleEnemyAttacks(
         float deltaTime,
         Player& player,
-        Enemy& enemy
+        std::vector<Enemy>& enemies
     );
 
     float playerAttackRange;
@@ -36,9 +38,9 @@ private:
 
     float enemyAttackRange;
     int enemyAttackDamage;
-
     float enemyAttackCooldown;
-    float enemyAttackCooldownTimer;
+
+    std::vector<float> enemyAttackCooldownTimers;
 
     bool cameraShakeRequested;
 };

@@ -13,7 +13,6 @@ CombatSystem::CombatSystem()
     enemyAttackRange(1.5f),
     enemyAttackDamage(10),
     enemyAttackCooldown(1.0f),
-    enemyAttackCooldownTimer(0.0f),
     cameraShakeRequested(false)
 {
 }
@@ -21,26 +20,26 @@ CombatSystem::CombatSystem()
 void CombatSystem::Update(
     float deltaTime,
     Player& player,
-    Enemy& enemy
+    std::vector<Enemy>& enemies
 )
 {
     cameraShakeRequested = false;
 
     HandlePlayerAttack(
         player,
-        enemy
+        enemies
     );
 
-    HandleEnemyAttack(
+    HandleEnemyAttacks(
         deltaTime,
         player,
-        enemy
+        enemies
     );
 }
 
 void CombatSystem::HandlePlayerAttack(
     Player& player,
-    Enemy& enemy
+    std::vector<Enemy>& enemies
 )
 {
     const bool playerAttackIsActive =
@@ -48,27 +47,36 @@ void CombatSystem::HandlePlayerAttack(
 
     if (
         playerAttackIsActive &&
-        !playerAttackWasActive &&
-        enemy.IsAlive()
+        !playerAttackWasActive
         )
     {
         const Vector3 playerPosition =
             player.GetPosition();
 
-        const Vector3 enemyPosition =
-            enemy.GetPosition();
-
-        const Vector3 playerToEnemy =
-            Vector3Subtract(
-                enemyPosition,
-                playerPosition
-            );
-
-        const float distanceToEnemy =
-            Vector3Length(playerToEnemy);
-
-        if (distanceToEnemy <= playerAttackRange)
+        for (Enemy& enemy : enemies)
         {
+            if (!enemy.IsAlive())
+            {
+                continue;
+            }
+
+            const Vector3 enemyPosition =
+                enemy.GetPosition();
+
+            const Vector3 playerToEnemy =
+                Vector3Subtract(
+                    enemyPosition,
+                    playerPosition
+                );
+
+            const float distanceToEnemy =
+                Vector3Length(playerToEnemy);
+
+            if (distanceToEnemy > playerAttackRange)
+            {
+                continue;
+            }
+
             Vector3 directionToEnemy{
                 0.0f,
                 0.0f,
@@ -107,26 +115,44 @@ void CombatSystem::HandlePlayerAttack(
         playerAttackIsActive;
 }
 
-void CombatSystem::HandleEnemyAttack(
+void CombatSystem::HandleEnemyAttacks(
     float deltaTime,
     Player& player,
-    Enemy& enemy
+    std::vector<Enemy>& enemies
 )
 {
-    if (enemyAttackCooldownTimer > 0.0f)
+    if (
+        enemyAttackCooldownTimers.size() !=
+        enemies.size()
+        )
     {
-        enemyAttackCooldownTimer -= deltaTime;
+        enemyAttackCooldownTimers.resize(
+            enemies.size(),
+            0.0f
+        );
+    }
 
-        if (enemyAttackCooldownTimer < 0.0f)
+    for (
+        std::size_t index = 0;
+        index < enemies.size();
+        ++index
+        )
+    {
+        float& cooldownTimer =
+            enemyAttackCooldownTimers[index];
+
+        if (cooldownTimer > 0.0f)
         {
-            enemyAttackCooldownTimer = 0.0f;
+            cooldownTimer -= deltaTime;
+
+            if (cooldownTimer < 0.0f)
+            {
+                cooldownTimer = 0.0f;
+            }
         }
     }
 
-    if (
-        !player.IsAlive() ||
-        !enemy.IsAlive()
-        )
+    if (!player.IsAlive())
     {
         return;
     }
@@ -134,31 +160,51 @@ void CombatSystem::HandleEnemyAttack(
     const Vector3 playerPosition =
         player.GetPosition();
 
-    const Vector3 enemyPosition =
-        enemy.GetPosition();
-
-    const Vector3 enemyToPlayer =
-        Vector3Subtract(
-            playerPosition,
-            enemyPosition
-        );
-
-    const float distanceToPlayer =
-        Vector3Length(enemyToPlayer);
-
-    if (
-        distanceToPlayer <= enemyAttackRange &&
-        enemyAttackCooldownTimer <= 0.0f
+    for (
+        std::size_t index = 0;
+        index < enemies.size();
+        ++index
         )
     {
-        player.TakeDamage(
-            enemyAttackDamage
-        );
+        Enemy& enemy =
+            enemies[index];
 
-        enemyAttackCooldownTimer =
-            enemyAttackCooldown;
+        if (!enemy.IsAlive())
+        {
+            continue;
+        }
 
-        cameraShakeRequested = true;
+        const Vector3 enemyPosition =
+            enemy.GetPosition();
+
+        const Vector3 enemyToPlayer =
+            Vector3Subtract(
+                playerPosition,
+                enemyPosition
+            );
+
+        const float distanceToPlayer =
+            Vector3Length(enemyToPlayer);
+
+        if (
+            distanceToPlayer <= enemyAttackRange &&
+            enemyAttackCooldownTimers[index] <= 0.0f
+            )
+        {
+            player.TakeDamage(
+                enemyAttackDamage
+            );
+
+            enemyAttackCooldownTimers[index] =
+                enemyAttackCooldown;
+
+            cameraShakeRequested = true;
+
+            if (!player.IsAlive())
+            {
+                break;
+            }
+        }
     }
 }
 

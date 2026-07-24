@@ -1,6 +1,8 @@
 #include <raylib.h>
 #include <raymath.h>
 
+#include <vector>
+
 #include "CombatSystem.h"
 #include "Enemy.h"
 #include "GameState.h"
@@ -25,14 +27,56 @@ int main()
 
     SetTargetFPS(60);
 
-    const Vector3 enemyStartPosition{
-        8.0f,
-        1.0f,
-        -8.0f
+    // =====================================================
+    // DÜŞMANLARIN BAŞLANGIÇ KONUMLARI
+    // =====================================================
+
+    const std::vector<Vector3> enemyStartPositions{
+        {
+            8.0f,
+            1.0f,
+            -8.0f
+        },
+        {
+            -8.0f,
+            1.0f,
+            -8.0f
+        },
+        {
+            10.0f,
+            1.0f,
+            4.0f
+        },
+        {
+            -10.0f,
+            1.0f,
+            4.0f
+        },
+        {
+            0.0f,
+            1.0f,
+            -12.0f
+        }
     };
 
     Player player;
-    Enemy enemy(enemyStartPosition);
+
+    std::vector<Enemy> enemies;
+
+    enemies.reserve(
+        enemyStartPositions.size()
+    );
+
+    for (
+        const Vector3& startPosition :
+        enemyStartPositions
+        )
+    {
+        enemies.emplace_back(
+            startPosition
+        );
+    }
+
     CombatSystem combatSystem;
 
     GameState gameState =
@@ -84,16 +128,26 @@ int main()
         // =====================================================
         // GAME OVER DURUMUNDA YENİDEN BAŞLATMA
         // =====================================================
+
         if (
             gameState == GameState::GameOver &&
             IsKeyPressed(KEY_R)
             )
         {
-            player = Player();
+            player =
+                Player();
 
-            enemy = Enemy(
-                enemyStartPosition
-            );
+            enemies.clear();
+
+            for (
+                const Vector3& startPosition :
+                enemyStartPositions
+                )
+            {
+                enemies.emplace_back(
+                    startPosition
+                );
+            }
 
             combatSystem =
                 CombatSystem();
@@ -117,6 +171,7 @@ int main()
         // =====================================================
         // OYUN GÜNCELLEMELERİ
         // =====================================================
+
         if (gameState == GameState::Playing)
         {
             player.Update(deltaTime);
@@ -124,15 +179,18 @@ int main()
             const Vector3 playerPosition =
                 player.GetPosition();
 
-            enemy.Update(
-                deltaTime,
-                playerPosition
-            );
+            for (Enemy& enemy : enemies)
+            {
+                enemy.Update(
+                    deltaTime,
+                    playerPosition
+                );
+            }
 
             combatSystem.Update(
                 deltaTime,
                 player,
-                enemy
+                enemies
             );
 
             if (
@@ -154,6 +212,7 @@ int main()
         // =====================================================
         // KAMERA TAKİBİ
         // =====================================================
+
         const Vector3 playerPosition =
             player.GetPosition();
 
@@ -184,6 +243,7 @@ int main()
         // =====================================================
         // KAMERA SARSINTISI
         // =====================================================
+
         if (cameraShakeTime > 0.0f)
         {
             cameraShakeTime -= deltaTime;
@@ -207,6 +267,7 @@ int main()
         // =====================================================
         // ÇİZİM
         // =====================================================
+
         BeginDrawing();
 
         ClearBackground(
@@ -239,20 +300,28 @@ int main()
         );
 
         player.Draw();
-        enemy.Draw();
+
+        for (Enemy& enemy : enemies)
+        {
+            enemy.Draw();
+        }
 
         EndMode3D();
 
-        UI::DrawEnemyHealthBar(
-            enemy,
-            camera
-        );
+        for (const Enemy& enemy : enemies)
+        {
+            UI::DrawEnemyHealthBar(
+                enemy,
+                camera
+            );
+        }
 
         UI::DrawHUD(player);
 
         // =====================================================
         // GAME OVER EKRANI
         // =====================================================
+
         if (gameState == GameState::GameOver)
         {
             DrawRectangle(
