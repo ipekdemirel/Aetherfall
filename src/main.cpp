@@ -1,7 +1,9 @@
 #include <raylib.h>
 #include <raymath.h>
 
+#include "CombatSystem.h"
 #include "Enemy.h"
+#include "GameState.h"
 #include "Player.h"
 #include "UI.h"
 
@@ -23,15 +25,18 @@ int main()
 
     SetTargetFPS(60);
 
-    Player player;
-    Enemy enemy({ 8.0f, 1.0f, -8.0f });
+    const Vector3 enemyStartPosition{
+        8.0f,
+        1.0f,
+        -8.0f
+    };
 
-    Camera3D camera{};
-    camera.position = { 0.0f, 10.0f, 12.0f };
-    camera.target = player.GetPosition();
-    camera.up = { 0.0f, 1.0f, 0.0f };
-    camera.fovy = 45.0f;
-    camera.projection = CAMERA_PERSPECTIVE;
+    Player player;
+    Enemy enemy(enemyStartPosition);
+    CombatSystem combatSystem;
+
+    GameState gameState =
+        GameState::Playing;
 
     const Vector3 cameraOffset{
         0.0f,
@@ -39,85 +44,118 @@ int main()
         12.0f
     };
 
-    const float cameraFollowSpeed = 7.0f;
-    const float attackRange = 2.5f;
-    const float attackDamage = 25.0f;
+    Camera3D camera{};
 
-    bool attackWasActive = false;
+    camera.position = {
+        player.GetPosition().x + cameraOffset.x,
+        player.GetPosition().y + cameraOffset.y,
+        player.GetPosition().z + cameraOffset.z
+    };
 
-    float cameraShakeTime = 0.0f;
+    camera.target =
+        player.GetPosition();
 
-    const float cameraShakeDuration = 0.10f;
-    const float cameraShakeStrength = 0.18f;
+    camera.up = {
+        0.0f,
+        1.0f,
+        0.0f
+    };
+
+    camera.fovy = 45.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
+
+    const float cameraFollowSpeed =
+        7.0f;
+
+    float cameraShakeTime =
+        0.0f;
+
+    const float cameraShakeDuration =
+        0.10f;
+
+    const float cameraShakeStrength =
+        0.18f;
 
     while (!WindowShouldClose())
     {
-        const float deltaTime = GetFrameTime();
+        const float deltaTime =
+            GetFrameTime();
 
-        player.Update(deltaTime);
-
-        const Vector3 playerPosition =
-            player.GetPosition();
-
-        enemy.Update(
-            deltaTime,
-            playerPosition
-        );
-
-        const bool attackIsActive =
-            player.IsAttacking();
-
+        // =====================================================
+        // GAME OVER DURUMUNDA YENİDEN BAŞLATMA
+        // =====================================================
         if (
-            attackIsActive &&
-            !attackWasActive &&
-            enemy.IsAlive()
+            gameState == GameState::GameOver &&
+            IsKeyPressed(KEY_R)
             )
         {
-            const Vector3 enemyPosition =
-                enemy.GetPosition();
+            player = Player();
 
-            const Vector3 playerToEnemy =
-                Vector3Subtract(
-                    enemyPosition,
-                    playerPosition
-                );
+            enemy = Enemy(
+                enemyStartPosition
+            );
 
-            const float distanceToEnemy =
-                Vector3Length(
-                    playerToEnemy
-                );
+            combatSystem =
+                CombatSystem();
 
-            if (distanceToEnemy <= attackRange)
+            gameState =
+                GameState::Playing;
+
+            cameraShakeTime =
+                0.0f;
+
+            camera.position = {
+                player.GetPosition().x + cameraOffset.x,
+                player.GetPosition().y + cameraOffset.y,
+                player.GetPosition().z + cameraOffset.z
+            };
+
+            camera.target =
+                player.GetPosition();
+        }
+
+        // =====================================================
+        // OYUN GÜNCELLEMELERİ
+        // =====================================================
+        if (gameState == GameState::Playing)
+        {
+            player.Update(deltaTime);
+
+            const Vector3 playerPosition =
+                player.GetPosition();
+
+            enemy.Update(
+                deltaTime,
+                playerPosition
+            );
+
+            combatSystem.Update(
+                deltaTime,
+                player,
+                enemy
+            );
+
+            if (
+                combatSystem
+                .ConsumeCameraShakeRequest()
+                )
             {
-                const Vector3 directionToEnemy =
-                    Vector3Normalize(
-                        playerToEnemy
-                    );
+                cameraShakeTime =
+                    cameraShakeDuration;
+            }
 
-                const float facingAmount =
-                    Vector3DotProduct(
-                        player.GetFacingDirection(),
-                        directionToEnemy
-                    );
-
-                if (facingAmount > 0.35f)
-                {
-                    enemy.TakeDamage(
-                        attackDamage
-                    );
-
-                    enemy.ApplyKnockback(
-                        directionToEnemy,
-                        5.0f
-                    );
-
-                    cameraShakeTime =
-                        cameraShakeDuration;
-                }
+            if (!player.IsAlive())
+            {
+                gameState =
+                    GameState::GameOver;
             }
         }
 
-        attackWasActive = attackIsActive;
+        // =====================================================
+        // KAMERA TAKİBİ
+        // =====================================================
+        const Vector3 playerPosition =
+            player.GetPosition();
 
         const Vector3 desiredCameraTarget{
             playerPosition.x,
@@ -143,6 +181,9 @@ int main()
             cameraFollowSpeed * deltaTime
         );
 
+        // =====================================================
+        // KAMERA SARSINTISI
+        // =====================================================
         if (cameraShakeTime > 0.0f)
         {
             cameraShakeTime -= deltaTime;
@@ -163,17 +204,32 @@ int main()
             }
         }
 
+        // =====================================================
+        // ÇİZİM
+        // =====================================================
         BeginDrawing();
 
         ClearBackground(
-            Color{ 135, 206, 235, 255 }
+            Color{
+                135,
+                206,
+                235,
+                255
+            }
         );
 
         BeginMode3D(camera);
 
         DrawPlane(
-            { 0.0f, 0.0f, 0.0f },
-            { 50.0f, 50.0f },
+            {
+                0.0f,
+                0.0f,
+                0.0f
+            },
+            {
+                50.0f,
+                50.0f
+            },
             DARKGREEN
         );
 
@@ -192,7 +248,68 @@ int main()
             camera
         );
 
-        UI::DrawHUD();
+        UI::DrawHUD(player);
+
+        // =====================================================
+        // GAME OVER EKRANI
+        // =====================================================
+        if (gameState == GameState::GameOver)
+        {
+            DrawRectangle(
+                0,
+                0,
+                GetScreenWidth(),
+                GetScreenHeight(),
+                Color{
+                    0,
+                    0,
+                    0,
+                    150
+                }
+            );
+
+            const char* gameOverText =
+                "GAME OVER";
+
+            const int gameOverFontSize =
+                60;
+
+            const int gameOverTextWidth =
+                MeasureText(
+                    gameOverText,
+                    gameOverFontSize
+                );
+
+            DrawText(
+                gameOverText,
+                GetScreenWidth() / 2 -
+                gameOverTextWidth / 2,
+                GetScreenHeight() / 2 - 60,
+                gameOverFontSize,
+                RED
+            );
+
+            const char* restartText =
+                "Press R to Restart";
+
+            const int restartFontSize =
+                24;
+
+            const int restartTextWidth =
+                MeasureText(
+                    restartText,
+                    restartFontSize
+                );
+
+            DrawText(
+                restartText,
+                GetScreenWidth() / 2 -
+                restartTextWidth / 2,
+                GetScreenHeight() / 2 + 20,
+                restartFontSize,
+                WHITE
+            );
+        }
 
         EndDrawing();
     }

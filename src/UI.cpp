@@ -1,10 +1,11 @@
 #include "UI.h"
 
 #include "Enemy.h"
+#include "Player.h"
 
 namespace UI
 {
-    void DrawHUD()
+    void DrawHUD(const Player& player)
     {
         DrawText(
             "AETHERFALL",
@@ -44,6 +45,58 @@ namespace UI
             142,
             20,
             DARKGRAY
+        );
+
+        // ===========================
+        // PLAYER HP
+        // ===========================
+
+        const float healthPercent =
+            static_cast<float>(player.GetHealth()) /
+            static_cast<float>(player.GetMaxHealth());
+
+        DrawText(
+            "PLAYER",
+            20,
+            190,
+            22,
+            BLACK
+        );
+
+        DrawRectangle(
+            20,
+            220,
+            220,
+            24,
+            DARKGRAY
+        );
+
+        DrawRectangle(
+            20,
+            220,
+            static_cast<int>(220 * healthPercent),
+            24,
+            GREEN
+        );
+
+        DrawRectangleLines(
+            20,
+            220,
+            220,
+            24,
+            BLACK
+        );
+
+        DrawText(
+            TextFormat(
+                "%d / %d",
+                player.GetHealth(),
+                player.GetMaxHealth()
+            ),
+            80,
+            250,
+            20,
+            BLACK
         );
 
         DrawFPS(

@@ -16,8 +16,17 @@ public:
     Vector3 GetFacingDirection() const;
 
     bool IsAttacking() const;
-
     float GetAttackProgress() const;
+
+    // ==========================
+    // HEALTH
+    // ==========================
+    void TakeDamage(int damage);
+
+    int GetHealth() const;
+    int GetMaxHealth() const;
+
+    bool IsAlive() const;
 
 private:
     Vector3 position;
@@ -36,4 +45,10 @@ private:
     bool isDashing;
 
     Weapon weapon;
+
+    // ==========================
+    // PLAYER HEALTH
+    // ==========================
+    int health;
+    int maxHealth;
 };

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <raylib.h>
-
 class Player;
 class Enemy;
 
@@ -10,11 +8,37 @@ class CombatSystem
 public:
     CombatSystem();
 
-    void Update(Player& player, Enemy& enemy);
+    void Update(
+        float deltaTime,
+        Player& player,
+        Enemy& enemy
+    );
+
+    bool ConsumeCameraShakeRequest();
 
 private:
-    bool attackWasActive;
+    void HandlePlayerAttack(
+        Player& player,
+        Enemy& enemy
+    );
 
-    float attackDamage;
-    float swordHitRadius;
+    void HandleEnemyAttack(
+        float deltaTime,
+        Player& player,
+        Enemy& enemy
+    );
+
+    float playerAttackRange;
+    float playerAttackDamage;
+    float playerKnockbackForce;
+
+    bool playerAttackWasActive;
+
+    float enemyAttackRange;
+    int enemyAttackDamage;
+
+    float enemyAttackCooldown;
+    float enemyAttackCooldownTimer;
+
+    bool cameraShakeRequested;
 };

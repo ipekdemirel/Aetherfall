@@ -25,14 +25,22 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(Aetherfall
     src/main.cpp
+
     src/Player.cpp
     src/Player.h
+
     src/Weapon.cpp
     src/Weapon.h
+
     src/Enemy.cpp
     src/Enemy.h
+
     src/UI.cpp
- "src/CombatSystem.h")
+    src/UI.h
+
+    src/CombatSystem.cpp
+    src/CombatSystem.h
+)
 
 target_include_directories(Aetherfall
     PRIVATE
@@ -45,7 +53,11 @@ target_link_libraries(Aetherfall
 )
 
 if (MSVC)
-    target_compile_options(Aetherfall PRIVATE /W4)
+    target_compile_options(
+        Aetherfall
+        PRIVATE
+        /W4
+    )
 else()
     target_compile_options(
         Aetherfall
@@ -56,14 +68,22 @@ else()
     )
 endif()
 
-set_target_properties(Aetherfall PROPERTIES
+set_target_properties(
+    Aetherfall
+    PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
 foreach(CONFIG Debug Release RelWithDebInfo MinSizeRel)
-    string(TOUPPER "${CONFIG}" CONFIG_UPPER)
+    string(
+        TOUPPER
+        "${CONFIG}"
+        CONFIG_UPPER
+    )
 
-    set_target_properties(Aetherfall PROPERTIES
+    set_target_properties(
+        Aetherfall
+        PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER}
         "${CMAKE_BINARY_DIR}/bin/${CONFIG}"
     )
@@ -73,6 +93,6 @@ add_custom_command(
     TARGET Aetherfall
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_SOURCE_DIR}/assets"
-            "$<TARGET_FILE_DIR:Aetherfall>/assets"
+        "${CMAKE_SOURCE_DIR}/assets"
+        "$<TARGET_FILE_DIR:Aetherfall>/assets"
 )

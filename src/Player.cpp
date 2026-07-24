@@ -14,9 +14,12 @@ Player::Player()
     dashTimer(0.0f),
     dashCooldown(0.8f),
     dashCooldownTimer(0.0f),
-    isDashing(false)
+    isDashing(false),
+    health(100),
+    maxHealth(100)
 {
 }
+
 
 void Player::Update(float deltaTime)
 {
@@ -411,4 +414,28 @@ bool Player::IsAttacking() const
 float Player::GetAttackProgress() const
 {
     return weapon.GetAttackProgress();
+}
+void Player::TakeDamage(int damage)
+{
+    health -= damage;
+
+    if (health < 0)
+    {
+        health = 0;
+    }
+}
+
+int Player::GetHealth() const
+{
+    return health;
+}
+
+int Player::GetMaxHealth() const
+{
+    return maxHealth;
+}
+
+bool Player::IsAlive() const
+{
+    return health > 0;
 }
