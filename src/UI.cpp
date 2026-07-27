@@ -1,11 +1,18 @@
 #include "UI.h"
 
 #include "Enemy.h"
+#include "EnemyManager.h"
 #include "Player.h"
+
+#include <cmath>
 
 namespace UI
 {
-    void DrawHUD(const Player& player)
+    void DrawHUD(
+        const Player& player,
+        int collectedKeys,
+        int totalKeys
+    )
     {
         DrawText(
             "AETHERFALL",
@@ -47,13 +54,23 @@ namespace UI
             DARKGRAY
         );
 
-        // ===========================
+        // =====================================================
         // PLAYER HP
-        // ===========================
+        // =====================================================
 
-        const float healthPercent =
+        float healthPercent =
             static_cast<float>(player.GetHealth()) /
             static_cast<float>(player.GetMaxHealth());
+
+        if (healthPercent < 0.0f)
+        {
+            healthPercent = 0.0f;
+        }
+
+        if (healthPercent > 1.0f)
+        {
+            healthPercent = 1.0f;
+        }
 
         DrawText(
             "PLAYER",
@@ -74,7 +91,9 @@ namespace UI
         DrawRectangle(
             20,
             220,
-            static_cast<int>(220 * healthPercent),
+            static_cast<int>(
+                220.0f * healthPercent
+                ),
             24,
             GREEN
         );
@@ -97,6 +116,22 @@ namespace UI
             250,
             20,
             BLACK
+        );
+
+        // =====================================================
+        // KEYS
+        // =====================================================
+
+        DrawText(
+            TextFormat(
+                "Keys : %d / %d",
+                collectedKeys,
+                totalKeys
+            ),
+            20,
+            290,
+            24,
+            GOLD
         );
 
         DrawFPS(
@@ -130,12 +165,25 @@ namespace UI
                 camera
             );
 
-        const float healthPercentage =
+        float healthPercentage =
             enemy.GetHealth() /
             enemy.GetMaxHealth();
 
-        const float healthBarWidth = 100.0f;
-        const float healthBarHeight = 12.0f;
+        if (healthPercentage < 0.0f)
+        {
+            healthPercentage = 0.0f;
+        }
+
+        if (healthPercentage > 1.0f)
+        {
+            healthPercentage = 1.0f;
+        }
+
+        const float healthBarWidth =
+            100.0f;
+
+        const float healthBarHeight =
+            12.0f;
 
         const float healthBarX =
             healthBarScreenPosition.x -
@@ -146,10 +194,18 @@ namespace UI
             healthBarHeight / 2.0f;
 
         DrawRectangle(
-            static_cast<int>(healthBarX - 2.0f),
-            static_cast<int>(healthBarY - 2.0f),
-            static_cast<int>(healthBarWidth + 4.0f),
-            static_cast<int>(healthBarHeight + 4.0f),
+            static_cast<int>(
+                healthBarX - 2.0f
+                ),
+            static_cast<int>(
+                healthBarY - 2.0f
+                ),
+            static_cast<int>(
+                healthBarWidth + 4.0f
+                ),
+            static_cast<int>(
+                healthBarHeight + 4.0f
+                ),
             BLACK
         );
 
@@ -201,5 +257,141 @@ namespace UI
             16,
             BLACK
         );
+    }
+
+    void DrawWaveInformation(
+        const EnemyManager& enemyManager
+    )
+    {
+        const int panelWidth =
+            260;
+
+        const int panelHeight =
+            enemyManager.IsWaitingForNextWave()
+            ? 145
+            : 110;
+
+        const int panelX =
+            GetScreenWidth() -
+            panelWidth -
+            20;
+
+        const int panelY =
+            60;
+
+        DrawRectangle(
+            panelX,
+            panelY,
+            panelWidth,
+            panelHeight,
+            Color{
+                0,
+                0,
+                0,
+                150
+            }
+        );
+
+        DrawRectangleLines(
+            panelX,
+            panelY,
+            panelWidth,
+            panelHeight,
+            WHITE
+        );
+
+        const char* waveText =
+            TextFormat(
+                "WAVE %d",
+                enemyManager.GetCurrentWave()
+            );
+
+        const int waveFontSize =
+            30;
+
+        const int waveTextWidth =
+            MeasureText(
+                waveText,
+                waveFontSize
+            );
+
+        DrawText(
+            waveText,
+            panelX +
+            panelWidth / 2 -
+            waveTextWidth / 2,
+            panelY + 14,
+            waveFontSize,
+            GOLD
+        );
+
+        const char* enemiesText =
+            TextFormat(
+                "Enemies Left: %d",
+                enemyManager.GetAliveEnemyCount()
+            );
+
+        const int enemiesFontSize =
+            22;
+
+        const int enemiesTextWidth =
+            MeasureText(
+                enemiesText,
+                enemiesFontSize
+            );
+
+        DrawText(
+            enemiesText,
+            panelX +
+            panelWidth / 2 -
+            enemiesTextWidth / 2,
+            panelY + 60,
+            enemiesFontSize,
+            WHITE
+        );
+
+        if (
+            enemyManager
+            .IsWaitingForNextWave()
+            )
+        {
+            int secondsRemaining =
+                static_cast<int>(
+                    std::ceil(
+                        enemyManager
+                        .GetNextWaveTimer()
+                    )
+                    );
+
+            if (secondsRemaining < 0)
+            {
+                secondsRemaining = 0;
+            }
+
+            const char* nextWaveText =
+                TextFormat(
+                    "Next Wave: %d",
+                    secondsRemaining
+                );
+
+            const int timerFontSize =
+                24;
+
+            const int timerTextWidth =
+                MeasureText(
+                    nextWaveText,
+                    timerFontSize
+                );
+
+            DrawText(
+                nextWaveText,
+                panelX +
+                panelWidth / 2 -
+                timerTextWidth / 2,
+                panelY + 98,
+                timerFontSize,
+                SKYBLUE
+            );
+        }
     }
 }

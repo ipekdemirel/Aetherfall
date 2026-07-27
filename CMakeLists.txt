@@ -35,12 +35,20 @@ add_executable(Aetherfall
     src/Enemy.cpp
     src/Enemy.h
 
-    src/UI.cpp
-    src/UI.h
+    src/EnemyManager.cpp
+    src/EnemyManager.h
 
     src/CombatSystem.cpp
     src/CombatSystem.h
-)
+
+    src/KeyItem.cpp
+    src/KeyItem.h
+
+    src/UI.cpp
+    src/UI.h
+
+    src/GameState.h
+ "src/ExitDoor.h" "src/ExitDoor.cpp")
 
 target_include_directories(Aetherfall
     PRIVATE

@@ -3,5 +3,8 @@
 enum class GameState
 {
     Playing,
-    GameOver
+
+    GameOver,
+
+    LevelComplete
 };
