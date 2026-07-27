@@ -28,6 +28,16 @@ public:
     float GetHealth() const;
     float GetMaxHealth() const;
 
+    // ==========================
+    // SCORE SYSTEM
+    // ==========================
+
+    int GetScoreValue() const;
+
+    bool ScoreAlreadyGiven() const;
+
+    void MarkScoreGiven();
+
 private:
     Vector3 position;
     Vector3 knockbackVelocity;
@@ -41,4 +51,12 @@ private:
     float hitFlashDuration;
 
     bool alive;
+
+    // ==========================
+    // SCORE SYSTEM
+    // ==========================
+
+    int scoreValue;
+
+    bool scoreGiven;
 };

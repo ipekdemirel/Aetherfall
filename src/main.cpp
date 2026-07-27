@@ -4,20 +4,19 @@
 #include <vector>
 
 #include "CombatSystem.h"
+#include "CoinManager.h"
 #include "EnemyManager.h"
-#include "GameState.h"
-#include "Player.h"
-#include "UI.h"
-#include "KeyItem.h"
 #include "ExitDoor.h"
+#include "GameState.h"
+#include "KeyItem.h"
+#include "Player.h"
+#include "ScoreManager.h"
+#include "UI.h"
 
 int main()
 {
-    const int screenWidth =
-        1280;
-
-    const int screenHeight =
-        720;
+    const int screenWidth = 1280;
+    const int screenHeight = 720;
 
     SetConfigFlags(
         FLAG_MSAA_4X_HINT |
@@ -33,7 +32,12 @@ int main()
     SetTargetFPS(60);
 
     Player player;
+
     std::vector<KeyItem> keys;
+
+    // =====================================================
+    // LEVEL 1 KEYS
+    // =====================================================
 
     keys.emplace_back(
         Vector3{ -8.0f, 0.5f, -8.0f }
@@ -47,8 +51,11 @@ int main()
         Vector3{ 0.0f, 0.5f, 8.0f }
     );
 
-    const int totalKeys =
-        static_cast<int>(keys.size());
+    const int totalKeys = 3;
+
+    // =====================================================
+    // LEVEL 1 EXIT DOOR
+    // =====================================================
 
     ExitDoor exitDoor(
         Vector3{ 18.0f, 1.5f, 0.0f }
@@ -59,8 +66,18 @@ int main()
 
     CombatSystem combatSystem;
 
+    CoinManager coinManager;
+
+    ScoreManager scoreManager;
+
     GameState gameState =
         GameState::Playing;
+
+    int currentLevel = 1;
+
+    // Oyuncu mevcut bölümü yeniden başlatırsa
+    // dönülecek puanı saklar.
+    int levelStartScore = 0;
 
     const Vector3 cameraOffset{
         0.0f,
@@ -71,14 +88,9 @@ int main()
     Camera3D camera{};
 
     camera.position = {
-        player.GetPosition().x +
-            cameraOffset.x,
-
-        player.GetPosition().y +
-            cameraOffset.y,
-
-        player.GetPosition().z +
-            cameraOffset.z
+        player.GetPosition().x + cameraOffset.x,
+        player.GetPosition().y + cameraOffset.y,
+        player.GetPosition().z + cameraOffset.z
     };
 
     camera.target =
@@ -90,25 +102,20 @@ int main()
         0.0f
     };
 
-    camera.fovy =
-        45.0f;
+    camera.fovy = 45.0f;
 
     camera.projection =
         CAMERA_PERSPECTIVE;
 
-    const float cameraFollowSpeed =
-        7.0f;
+    const float cameraFollowSpeed = 7.0f;
 
-    float cameraShakeTime =
-        0.0f;
+    float cameraShakeTime = 0.0f;
 
-    const float cameraShakeDuration =
-        0.10f;
-
-    const float cameraShakeStrength =
-        0.18f;
+    const float cameraShakeDuration = 0.10f;
+    const float cameraShakeStrength = 0.18f;
 
     int collectedKeys = 0;
+    int coinCount = 0;
 
     while (!WindowShouldClose())
     {
@@ -116,7 +123,7 @@ int main()
             GetFrameTime();
 
         // =====================================================
-        // RESTART
+        // RESTART AFTER GAME OVER
         // =====================================================
 
         if (
@@ -124,31 +131,31 @@ int main()
             IsKeyPressed(KEY_R)
             )
         {
-            player =
-                Player();
+            currentLevel = 1;
+
+            scoreManager.Reset();
+
+            levelStartScore = 0;
+
+            player = Player();
 
             keys.clear();
 
-            keys.emplace_back(
-                Vector3{ -8.0f, 0.5f, -8.0f }
-            );
-
-            keys.emplace_back(
-                Vector3{ 8.0f, 0.5f, -5.0f }
-            );
-
-            keys.emplace_back(
-                Vector3{ 0.0f, 0.5f, 8.0f }
-            );
+            keys.emplace_back(Vector3{ -8.0f, 0.5f, -8.0f });
+            keys.emplace_back(Vector3{ 8.0f, 0.5f, -5.0f });
+            keys.emplace_back(Vector3{ 0.0f, 0.5f, 8.0f });
 
             exitDoor =
                 ExitDoor(
                     Vector3{ 18.0f, 1.5f, 0.0f }
                 );
 
-            enemyManager.Reset();
+            collectedKeys = 0;
 
             enemyManager.Reset();
+
+            coinManager.Reset();
+            coinCount = 0;
 
             combatSystem =
                 CombatSystem();
@@ -156,32 +163,88 @@ int main()
             gameState =
                 GameState::Playing;
 
-            cameraShakeTime =
-                0.0f;
+            cameraShakeTime = 0.0f;
 
             camera.position = {
-                player.GetPosition().x +
-                    cameraOffset.x,
-
-                player.GetPosition().y +
-                    cameraOffset.y,
-
-                player.GetPosition().z +
-                    cameraOffset.z
+                player.GetPosition().x + cameraOffset.x,
+                player.GetPosition().y + cameraOffset.y,
+                player.GetPosition().z + cameraOffset.z
             };
 
             camera.target =
                 player.GetPosition();
         }
 
-   // =====================================================
-   // UPDATE
-   // =====================================================
+        // =====================================================
+        // START LEVEL 2
+        // =====================================================
 
         if (
-            gameState ==
-            GameState::Playing
+            gameState == GameState::LevelComplete &&
+            currentLevel == 1 &&
+            IsKeyPressed(KEY_ENTER)
             )
+        {
+            // Level 1 sonunda kazanılan puanı sakla.
+            levelStartScore =
+                scoreManager.GetScore();
+
+            currentLevel = 2;
+
+            player = Player();
+
+            keys.clear();
+
+            // Level 2 anahtar konumları
+
+            keys.emplace_back(
+                Vector3{ -14.0f, 0.5f, 6.0f }
+            );
+
+            keys.emplace_back(
+                Vector3{ 12.0f, 0.5f, 10.0f }
+            );
+
+            keys.emplace_back(
+                Vector3{ 6.0f, 0.5f, -14.0f }
+            );
+
+            // Level 2 çıkış kapısı
+
+            exitDoor =
+                ExitDoor(
+                    Vector3{ -18.0f, 1.5f, -12.0f }
+                );
+
+            collectedKeys = 0;
+
+            enemyManager.Reset();
+
+            coinManager.Reset();
+
+            combatSystem =
+                CombatSystem();
+
+            gameState =
+                GameState::Playing;
+
+            cameraShakeTime = 0.0f;
+
+            camera.position = {
+                player.GetPosition().x + cameraOffset.x,
+                player.GetPosition().y + cameraOffset.y,
+                player.GetPosition().z + cameraOffset.z
+            };
+
+            camera.target =
+                player.GetPosition();
+        }
+
+        // =====================================================
+        // UPDATE
+        // =====================================================
+
+        if (gameState == GameState::Playing)
         {
             player.Update(
                 deltaTime
@@ -197,6 +260,41 @@ int main()
                 player,
                 enemyManager.GetEnemies()
             );
+
+            // =================================================
+            // SCORE CONTROL
+            // =================================================
+
+            for (
+                Enemy& enemy :
+                enemyManager.GetEnemies()
+                )
+            {
+                if (
+                    !enemy.IsAlive() &&
+                    !enemy.ScoreAlreadyGiven()
+                    )
+                {
+                    scoreManager.AddScore(
+                        enemy.GetScoreValue()
+                    );
+
+                    coinManager.SpawnCoin(
+                        enemy.GetPosition()
+                    );
+
+                    enemy.MarkScoreGiven();
+                }
+            }
+
+            coinCount += coinManager.Update(
+                deltaTime,
+                player.GetPosition()
+            );
+
+            // =================================================
+            // KEY UPDATE
+            // =================================================
 
             for (auto& key : keys)
             {
@@ -251,30 +349,23 @@ int main()
             player.GetPosition();
 
         const Vector3 desiredCameraPosition{
-            playerPosition.x +
-                cameraOffset.x,
-
-            playerPosition.y +
-                cameraOffset.y,
-
-            playerPosition.z +
-                cameraOffset.z
+            playerPosition.x + cameraOffset.x,
+            playerPosition.y + cameraOffset.y,
+            playerPosition.z + cameraOffset.z
         };
 
         camera.target =
             Vector3Lerp(
                 camera.target,
                 playerPosition,
-                cameraFollowSpeed *
-                deltaTime
+                cameraFollowSpeed * deltaTime
             );
 
         camera.position =
             Vector3Lerp(
                 camera.position,
                 desiredCameraPosition,
-                cameraFollowSpeed *
-                deltaTime
+                cameraFollowSpeed * deltaTime
             );
 
         // =====================================================
@@ -304,8 +395,7 @@ int main()
 
             if (cameraShakeTime < 0.0f)
             {
-                cameraShakeTime =
-                    0.0f;
+                cameraShakeTime = 0.0f;
             }
         }
 
@@ -345,6 +435,8 @@ int main()
 
         enemyManager.Draw();
 
+        coinManager.Draw();
+
         for (const auto& key : keys)
         {
             key.Draw();
@@ -371,18 +463,50 @@ int main()
             totalKeys
         );
 
+        UI::DrawScore(
+            scoreManager.GetScore()
+        );
+
+        UI::DrawCoins(
+            coinCount
+        );
+
         UI::DrawWaveInformation(
             enemyManager
+        );
+
+        // =====================================================
+        // LEVEL NUMBER
+        // =====================================================
+
+        const char* levelText =
+            TextFormat(
+                "LEVEL %d",
+                currentLevel
+            );
+
+        const int levelFontSize = 26;
+
+        const int levelTextWidth =
+            MeasureText(
+                levelText,
+                levelFontSize
+            );
+
+        DrawText(
+            levelText,
+            GetScreenWidth() / 2 -
+            levelTextWidth / 2,
+            20,
+            levelFontSize,
+            WHITE
         );
 
         // =====================================================
         // GAME OVER
         // =====================================================
 
-        if (
-            gameState ==
-            GameState::GameOver
-            )
+        if (gameState == GameState::GameOver)
         {
             DrawRectangle(
                 0,
@@ -400,8 +524,7 @@ int main()
             const char* gameOverText =
                 "GAME OVER";
 
-            const int gameOverFontSize =
-                60;
+            const int gameOverFontSize = 60;
 
             const int gameOverTextWidth =
                 MeasureText(
@@ -422,8 +545,7 @@ int main()
             const char* restartText =
                 "Press R to Restart";
 
-            const int restartFontSize =
-                24;
+            const int restartFontSize = 24;
 
             const int restartTextWidth =
                 MeasureText(
@@ -441,14 +563,12 @@ int main()
                 WHITE
             );
         }
-        // =====================================================
-// LEVEL COMPLETE
-// =====================================================
 
-        if (
-            gameState ==
-            GameState::LevelComplete
-            )
+        // =====================================================
+        // LEVEL COMPLETE
+        // =====================================================
+
+        if (gameState == GameState::LevelComplete)
         {
             DrawRectangle(
                 0,
@@ -464,10 +584,11 @@ int main()
             );
 
             const char* completeText =
-                "LEVEL COMPLETE";
+                currentLevel == 1
+                ? "LEVEL COMPLETE"
+                : "GAME COMPLETE";
 
-            const int completeFontSize =
-                60;
+            const int completeFontSize = 60;
 
             const int completeWidth =
                 MeasureText(
@@ -486,10 +607,11 @@ int main()
             );
 
             const char* continueText =
-                "Press ENTER to Continue";
+                currentLevel == 1
+                ? "Press ENTER to Start Level 2"
+                : "You Escaped Aetherfall!";
 
-            const int continueFontSize =
-                26;
+            const int continueFontSize = 26;
 
             const int continueWidth =
                 MeasureText(
@@ -507,6 +629,7 @@ int main()
                 WHITE
             );
         }
+
         EndDrawing();
     }
 

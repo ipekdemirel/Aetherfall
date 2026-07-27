@@ -276,8 +276,9 @@ namespace UI
             panelWidth -
             20;
 
+        // Score ve coin panellerinin altında gösterilir.
         const int panelY =
-            60;
+            160;
 
         DrawRectangle(
             panelX,
@@ -351,15 +352,13 @@ namespace UI
         );
 
         if (
-            enemyManager
-            .IsWaitingForNextWave()
+            enemyManager.IsWaitingForNextWave()
             )
         {
             int secondsRemaining =
                 static_cast<int>(
                     std::ceil(
-                        enemyManager
-                        .GetNextWaveTimer()
+                        enemyManager.GetNextWaveTimer()
                     )
                     );
 
@@ -393,5 +392,135 @@ namespace UI
                 SKYBLUE
             );
         }
+    }
+
+    void DrawScore(
+        int score
+    )
+    {
+        const int panelWidth =
+            260;
+
+        const int panelHeight =
+            42;
+
+        const int panelX =
+            GetScreenWidth() -
+            panelWidth -
+            20;
+
+        const int panelY =
+            60;
+
+        DrawRectangle(
+            panelX,
+            panelY,
+            panelWidth,
+            panelHeight,
+            Color{
+                0,
+                0,
+                0,
+                150
+            }
+        );
+
+        DrawRectangleLines(
+            panelX,
+            panelY,
+            panelWidth,
+            panelHeight,
+            WHITE
+        );
+
+        const char* scoreText =
+            TextFormat(
+                "SCORE: %d",
+                score
+            );
+
+        const int fontSize =
+            26;
+
+        const int textWidth =
+            MeasureText(
+                scoreText,
+                fontSize
+            );
+
+        DrawText(
+            scoreText,
+            panelX +
+            panelWidth / 2 -
+            textWidth / 2,
+            panelY + 8,
+            fontSize,
+            GOLD
+        );
+    }
+
+    void DrawCoins(
+        int coins
+    )
+    {
+        const int panelWidth =
+            260;
+
+        const int panelHeight =
+            42;
+
+        const int panelX =
+            GetScreenWidth() -
+            panelWidth -
+            20;
+
+        const int panelY =
+            110;
+
+        DrawRectangle(
+            panelX,
+            panelY,
+            panelWidth,
+            panelHeight,
+            Color{
+                0,
+                0,
+                0,
+                150
+            }
+        );
+
+        DrawRectangleLines(
+            panelX,
+            panelY,
+            panelWidth,
+            panelHeight,
+            GOLD
+        );
+
+        const char* coinText =
+            TextFormat(
+                "COINS: %d",
+                coins
+            );
+
+        const int fontSize =
+            26;
+
+        const int textWidth =
+            MeasureText(
+                coinText,
+                fontSize
+            );
+
+        DrawText(
+            coinText,
+            panelX +
+            panelWidth / 2 -
+            textWidth / 2,
+            panelY + 8,
+            fontSize,
+            GOLD
+        );
     }
 }

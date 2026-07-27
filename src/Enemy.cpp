@@ -10,7 +10,9 @@ Enemy::Enemy(Vector3 startPosition)
     maxHealth(100.0f),
     hitFlashTimer(0.0f),
     hitFlashDuration(0.25f),
-    alive(true)
+    alive(true),
+    scoreValue(100),
+    scoreGiven(false)
 {
 }
 
@@ -139,4 +141,23 @@ float Enemy::GetHealth() const
 float Enemy::GetMaxHealth() const
 {
     return maxHealth;
+}
+
+// ==========================
+// SCORE SYSTEM
+// ==========================
+
+int Enemy::GetScoreValue() const
+{
+    return scoreValue;
+}
+
+bool Enemy::ScoreAlreadyGiven() const
+{
+    return scoreGiven;
+}
+
+void Enemy::MarkScoreGiven()
+{
+    scoreGiven = true;
 }

@@ -22,4 +22,20 @@ namespace UI
     void DrawWaveInformation(
         const EnemyManager& enemyManager
     );
+
+    // ==========================
+    // SCORE
+    // ==========================
+
+    void DrawScore(
+        int score
+    );
+
+    // ==========================
+    // COINS
+    // ==========================
+
+    void DrawCoins(
+        int coins
+    );
 }
