@@ -439,3 +439,13 @@ bool Player::IsAlive() const
 {
     return health > 0;
 }
+
+void Player::Heal(int amount)
+{
+    health += amount;
+
+    if (health > maxHealth)
+    {
+        health = maxHealth;
+    }
+}

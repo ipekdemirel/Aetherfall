@@ -11,6 +11,7 @@
 #include "KeyItem.h"
 #include "Player.h"
 #include "ScoreManager.h"
+#include "Shop.h"
 #include "UI.h"
 
 int main()
@@ -28,6 +29,10 @@ int main()
         screenHeight,
         "Aetherfall"
     );
+
+    SetExitKey(KEY_NULL);
+
+    SetExitKey(KEY_NULL);
 
     SetTargetFPS(60);
 
@@ -69,6 +74,7 @@ int main()
     CoinManager coinManager;
 
     ScoreManager scoreManager;
+    Shop shop;
 
     GameState gameState =
         GameState::Playing;
@@ -246,20 +252,30 @@ int main()
 
         if (gameState == GameState::Playing)
         {
-            player.Update(
-                deltaTime
-            );
-
-            enemyManager.Update(
-                deltaTime,
-                player.GetPosition()
-            );
-
-            combatSystem.Update(
-                deltaTime,
+            shop.Update(
                 player,
-                enemyManager.GetEnemies()
+                coinCount
             );
+
+            if (!shop.IsOpen())
+            {
+                player.Update(
+                    deltaTime
+                );
+
+                enemyManager.Update(
+                    deltaTime,
+                    player.GetPosition()
+                );
+
+                combatSystem.Update(
+                   deltaTime,
+                   player,
+                   enemyManager.GetEnemies()
+                );
+            }
+
+                
 
             // =================================================
             // SCORE CONTROL
@@ -630,7 +646,13 @@ int main()
             );
         }
 
+        shop.Draw(
+            player,
+            coinCount
+        );
+
         EndDrawing();
+
     }
 
     CloseWindow();

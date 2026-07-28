@@ -26,6 +26,8 @@ public:
     int GetHealth() const;
     int GetMaxHealth() const;
 
+    void Heal(int amount);
+
     bool IsAlive() const;
 
 private:
