@@ -18,6 +18,16 @@ public:
 
     bool ConsumeCameraShakeRequest();
 
+    // ==========================
+    // PLAYER DAMAGE UPGRADE
+    // ==========================
+
+    void IncreasePlayerAttackDamage(
+        float amount
+    );
+
+    float GetPlayerAttackDamage() const;
+
 private:
     void HandlePlayerAttack(
         Player& player,

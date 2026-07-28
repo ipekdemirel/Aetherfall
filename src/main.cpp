@@ -161,10 +161,8 @@ int main()
             enemyManager.Reset();
 
             coinManager.Reset();
-            coinCount = 0;
 
-            combatSystem =
-                CombatSystem();
+            coinCount = 0;
 
             gameState =
                 GameState::Playing;
@@ -254,6 +252,7 @@ int main()
         {
             shop.Update(
                 player,
+                combatSystem,
                 coinCount
             );
 
@@ -648,6 +647,7 @@ int main()
 
         shop.Draw(
             player,
+            combatSystem,
             coinCount
         );
 

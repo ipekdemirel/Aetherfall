@@ -2,6 +2,7 @@
 
 #include <raylib.h>
 
+class CombatSystem;
 class Player;
 
 class Shop
@@ -11,34 +12,42 @@ public:
 
     void Update(
         Player& player,
+        CombatSystem& combatSystem,
         int& coinCount
     );
 
     void Draw(
         const Player& player,
+        const CombatSystem& combatSystem,
         int coinCount
     ) const;
 
     bool IsOpen() const;
 
 private:
-    bool isOpen;
-
-    float messageTimer;
-
     enum class MessageType
     {
         None,
-        PurchaseSuccessful,
+        HealthPurchased,
+        DamagePurchased,
         NotEnoughCoins,
         HealthAlreadyFull
     };
 
-    MessageType messageType;
-
+    Rectangle GetPanelRectangle() const;
     Rectangle GetHealButton() const;
+    Rectangle GetDamageButton() const;
 
     bool IsMouseOver(
         const Rectangle& rectangle
     ) const;
+
+    void ShowMessage(
+        MessageType newMessage
+    );
+
+    bool isOpen;
+
+    float messageTimer;
+    MessageType messageType;
 };

@@ -6,7 +6,8 @@
 #include <raymath.h>
 
 CombatSystem::CombatSystem()
-    : playerAttackRange(2.5f),
+    :
+    playerAttackRange(2.5f),
     playerAttackDamage(25.0f),
     playerKnockbackForce(5.0f),
     playerAttackWasActive(false),
@@ -70,9 +71,14 @@ void CombatSystem::HandlePlayerAttack(
                 );
 
             const float distanceToEnemy =
-                Vector3Length(playerToEnemy);
+                Vector3Length(
+                    playerToEnemy
+                );
 
-            if (distanceToEnemy > playerAttackRange)
+            if (
+                distanceToEnemy >
+                playerAttackRange
+                )
             {
                 continue;
             }
@@ -86,7 +92,9 @@ void CombatSystem::HandlePlayerAttack(
             if (distanceToEnemy > 0.001f)
             {
                 directionToEnemy =
-                    Vector3Normalize(playerToEnemy);
+                    Vector3Normalize(
+                        playerToEnemy
+                    );
             }
 
             const float facingAmount =
@@ -106,7 +114,8 @@ void CombatSystem::HandlePlayerAttack(
                     playerKnockbackForce
                 );
 
-                cameraShakeRequested = true;
+                cameraShakeRequested =
+                    true;
             }
         }
     }
@@ -143,11 +152,13 @@ void CombatSystem::HandleEnemyAttacks(
 
         if (cooldownTimer > 0.0f)
         {
-            cooldownTimer -= deltaTime;
+            cooldownTimer -=
+                deltaTime;
 
             if (cooldownTimer < 0.0f)
             {
-                cooldownTimer = 0.0f;
+                cooldownTimer =
+                    0.0f;
             }
         }
     }
@@ -184,11 +195,15 @@ void CombatSystem::HandleEnemyAttacks(
             );
 
         const float distanceToPlayer =
-            Vector3Length(enemyToPlayer);
+            Vector3Length(
+                enemyToPlayer
+            );
 
         if (
-            distanceToPlayer <= enemyAttackRange &&
-            enemyAttackCooldownTimers[index] <= 0.0f
+            distanceToPlayer <=
+            enemyAttackRange &&
+            enemyAttackCooldownTimers[index] <=
+            0.0f
             )
         {
             player.TakeDamage(
@@ -198,7 +213,8 @@ void CombatSystem::HandleEnemyAttacks(
             enemyAttackCooldownTimers[index] =
                 enemyAttackCooldown;
 
-            cameraShakeRequested = true;
+            cameraShakeRequested =
+                true;
 
             if (!player.IsAlive())
             {
@@ -215,7 +231,26 @@ bool CombatSystem::ConsumeCameraShakeRequest()
         return false;
     }
 
-    cameraShakeRequested = false;
+    cameraShakeRequested =
+        false;
 
     return true;
+}
+
+void CombatSystem::IncreasePlayerAttackDamage(
+    float amount
+)
+{
+    if (amount <= 0.0f)
+    {
+        return;
+    }
+
+    playerAttackDamage +=
+        amount;
+}
+
+float CombatSystem::GetPlayerAttackDamage() const
+{
+    return playerAttackDamage;
 }
