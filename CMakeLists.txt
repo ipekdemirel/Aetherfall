@@ -49,15 +49,30 @@ add_executable(Aetherfall
 
     src/GameState.h
 
-    src/CoinManager.cpp
-    src/CoinManager.h
-
     src/Coin.cpp
     src/Coin.h
 
+    src/CoinManager.cpp
+    src/CoinManager.h
+
     src/Shop.cpp
     src/Shop.h
- "src/ExitDoor.h" "src/ExitDoor.cpp" "src/ScoreManager.h" "src/ScoreManager.cpp" "src/Coin.h" "src/Coin.cpp" "src/CoinManager.h" "src/CoinManager.cpp" "src/Shop.h" "src/Shop.cpp")
+
+    src/Boss.cpp
+    src/Boss.h
+
+    src/BossHUD.cpp
+    src/BossHUD.h
+
+    src/ExitDoor.cpp
+    src/ExitDoor.h
+
+    src/ScoreManager.cpp
+    src/ScoreManager.h
+
+    src/AetherCore.cpp
+    src/AetherCore.h
+)
 
 target_include_directories(Aetherfall
     PRIVATE

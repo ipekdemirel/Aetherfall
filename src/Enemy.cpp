@@ -4,24 +4,41 @@
 
 Enemy::Enemy(Vector3 startPosition)
     : position(startPosition),
+    homePosition(startPosition),
     knockbackVelocity{ 0.0f, 0.0f, 0.0f },
+    facingDirection{ 0.0f, 0.0f, 1.0f },
     moveSpeed(2.5f),
+    returnSpeed(1.8f),
     health(100.0f),
     maxHealth(100.0f),
     hitFlashTimer(0.0f),
     hitFlashDuration(0.25f),
+    detectionRange(8.0f),
+    loseTargetRange(13.0f),
+    forgetDuration(2.5f),
+    forgetTimer(0.0f),
+    homeStopDistance(0.25f),
+    alerted(false),
     alive(true),
     scoreValue(100),
     scoreGiven(false)
 {
 }
 
-void Enemy::Update(float deltaTime, Vector3 playerPosition)
+void Enemy::Update(
+    float deltaTime,
+    Vector3 playerPosition,
+    Vector3 separationForce
+)
 {
     if (!alive)
     {
         return;
     }
+
+    // =====================================================
+    // HIT FLASH TIMER
+    // =====================================================
 
     if (hitFlashTimer > 0.0f)
     {
@@ -33,31 +50,185 @@ void Enemy::Update(float deltaTime, Vector3 playerPosition)
         }
     }
 
-    position.x += knockbackVelocity.x * deltaTime;
-    position.z += knockbackVelocity.z * deltaTime;
+    // =====================================================
+    // KNOCKBACK
+    // =====================================================
 
-    knockbackVelocity = Vector3Scale(
-        knockbackVelocity,
-        0.88f
-    );
+    position.x +=
+        knockbackVelocity.x *
+        deltaTime;
 
-    if (Vector3Length(knockbackVelocity) < 0.05f)
+    position.z +=
+        knockbackVelocity.z *
+        deltaTime;
+
+    knockbackVelocity =
+        Vector3Scale(
+            knockbackVelocity,
+            0.88f
+        );
+
+    if (
+        Vector3Length(
+            knockbackVelocity
+        ) < 0.05f
+        )
     {
-        knockbackVelocity = { 0.0f, 0.0f, 0.0f };
+        knockbackVelocity =
+        {
+            0.0f,
+            0.0f,
+            0.0f
+        };
     }
 
-    Vector3 direction = Vector3Subtract(
-        playerPosition,
-        position
-    );
+    // Y ekseninde hareket etmiyoruz.
+    playerPosition.y = position.y;
 
-    if (Vector3Length(direction) > 0.1f)
+    Vector3 toPlayer =
+        Vector3Subtract(
+            playerPosition,
+            position
+        );
+
+    const float playerDistance =
+        Vector3Length(
+            toPlayer
+        );
+
+    // =====================================================
+    // PLAYER DETECTION
+    // =====================================================
+
+    if (!alerted)
     {
-        direction = Vector3Normalize(direction);
+        if (playerDistance <= detectionRange)
+        {
+            alerted = true;
 
-        position.x += direction.x * moveSpeed * deltaTime;
-        position.z += direction.z * moveSpeed * deltaTime;
+            forgetTimer =
+                forgetDuration;
+        }
     }
+    else
+    {
+        if (playerDistance <= loseTargetRange)
+        {
+            forgetTimer =
+                forgetDuration;
+        }
+        else
+        {
+            forgetTimer -=
+                deltaTime;
+
+            if (forgetTimer <= 0.0f)
+            {
+                forgetTimer = 0.0f;
+
+                alerted = false;
+            }
+        }
+    }
+
+    Vector3 movementDirection =
+    {
+        0.0f,
+        0.0f,
+        0.0f
+    };
+
+    float selectedMoveSpeed =
+        moveSpeed;
+
+    // =====================================================
+    // CHASE PLAYER
+    // =====================================================
+
+    if (alerted)
+    {
+        if (playerDistance > 0.1f)
+        {
+            movementDirection =
+                Vector3Normalize(
+                    toPlayer
+                );
+        }
+
+        selectedMoveSpeed =
+            moveSpeed;
+    }
+    else
+    {
+        // =================================================
+        // RETURN TO HOME POSITION
+        // =================================================
+
+        Vector3 toHome =
+            Vector3Subtract(
+                homePosition,
+                position
+            );
+
+        toHome.y = 0.0f;
+
+        const float homeDistance =
+            Vector3Length(
+                toHome
+            );
+
+        if (homeDistance > homeStopDistance)
+        {
+            movementDirection =
+                Vector3Normalize(
+                    toHome
+                );
+
+            selectedMoveSpeed =
+                returnSpeed;
+        }
+    }
+
+    // =====================================================
+    // ENEMY SEPARATION
+    // =====================================================
+
+    movementDirection =
+        Vector3Add(
+            movementDirection,
+            separationForce
+        );
+
+    movementDirection.y = 0.0f;
+
+    if (
+        Vector3Length(
+            movementDirection
+        ) > 0.01f
+        )
+    {
+        movementDirection =
+            Vector3Normalize(
+                movementDirection
+            );
+
+        facingDirection =
+            movementDirection;
+
+        position.x +=
+            movementDirection.x *
+            selectedMoveSpeed *
+            deltaTime;
+
+        position.z +=
+            movementDirection.z *
+            selectedMoveSpeed *
+            deltaTime;
+    }
+
+    // Düşmanların zeminden yukarı veya aşağı kaymasını önler.
+    position.y =
+        homePosition.y;
 }
 
 void Enemy::Draw() const
@@ -69,8 +240,20 @@ void Enemy::Draw() const
 
     const Color bodyColor =
         hitFlashTimer > 0.0f
-        ? Color{ 255, 255, 180, 255 }
-    : RED;
+        ? Color{
+            255,
+            255,
+            180,
+            255
+    }
+        : alerted
+        ? RED
+        : Color{
+            175,
+            60,
+            60,
+            255
+    };
 
     DrawCube(
         position,
@@ -85,8 +268,30 @@ void Enemy::Draw() const
         1.0f,
         2.0f,
         1.0f,
-        MAROON
+        alerted
+        ? MAROON
+        : DARKGRAY
     );
+
+    // =====================================================
+    // ALERT INDICATOR
+    // =====================================================
+
+    if (alerted)
+    {
+        const Vector3 alertPosition =
+        {
+            position.x,
+            position.y + 1.7f,
+            position.z
+        };
+
+        DrawSphere(
+            alertPosition,
+            0.12f,
+            YELLOW
+        );
+    }
 }
 
 void Enemy::TakeDamage(float damage)
@@ -97,7 +302,15 @@ void Enemy::TakeDamage(float damage)
     }
 
     health -= damage;
-    hitFlashTimer = hitFlashDuration;
+
+    hitFlashTimer =
+        hitFlashDuration;
+
+    // Düşmana vurulduğunda oyuncuyu görmese bile alarma geçer.
+    alerted = true;
+
+    forgetTimer =
+        forgetDuration;
 
     if (health < 0.0f)
     {
@@ -110,17 +323,26 @@ void Enemy::TakeDamage(float damage)
     }
 }
 
-void Enemy::ApplyKnockback(Vector3 direction, float force)
+void Enemy::ApplyKnockback(
+    Vector3 direction,
+    float force
+)
 {
-    if (!alive || Vector3Length(direction) <= 0.0f)
+    if (
+        !alive ||
+        Vector3Length(direction) <= 0.0f
+        )
     {
         return;
     }
 
-    knockbackVelocity = Vector3Scale(
-        Vector3Normalize(direction),
-        force
-    );
+    knockbackVelocity =
+        Vector3Scale(
+            Vector3Normalize(
+                direction
+            ),
+            force
+        );
 }
 
 bool Enemy::IsAlive() const
@@ -141,6 +363,11 @@ float Enemy::GetHealth() const
 float Enemy::GetMaxHealth() const
 {
     return maxHealth;
+}
+
+bool Enemy::IsAlerted() const
+{
+    return alerted;
 }
 
 // ==========================

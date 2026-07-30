@@ -25,28 +25,49 @@ public:
     bool IsOpen() const;
 
 private:
+    enum class UpgradeType
+    {
+        Heal,
+        Damage,
+        Armor,
+        MaxHealth,
+        Speed,
+        Dash
+    };
+
     enum class MessageType
     {
         None,
-        HealthPurchased,
-        DamagePurchased,
+        Purchased,
         NotEnoughCoins,
-        HealthAlreadyFull
+        HealthAlreadyFull,
+        MaximumLevel
     };
 
     Rectangle GetPanelRectangle() const;
-    Rectangle GetHealButton() const;
-    Rectangle GetDamageButton() const;
+    Rectangle GetUpgradeButton(int index) const;
 
-    bool IsMouseOver(
-        const Rectangle& rectangle
-    ) const;
-
-    void ShowMessage(
-        MessageType newMessage
+    bool IsMouseOver(const Rectangle& rectangle) const;
+    void ShowMessage(MessageType newMessage);
+    void TryPurchase(
+        UpgradeType type,
+        Player& player,
+        CombatSystem& combatSystem,
+        int& coinCount
     );
 
+    int GetLevel(UpgradeType type) const;
+    int GetMaximumLevel(UpgradeType type) const;
+    int GetCost(UpgradeType type) const;
+    const char* GetName(UpgradeType type) const;
+
     bool isOpen;
+
+    int damageLevel;
+    int armorLevel;
+    int maxHealthLevel;
+    int speedLevel;
+    int dashLevel;
 
     float messageTimer;
     MessageType messageType;

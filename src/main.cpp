@@ -3,6 +3,9 @@
 
 #include <vector>
 
+#include "AetherCore.h"
+#include "Boss.h"
+#include "BossHUD.h"
 #include "CombatSystem.h"
 #include "CoinManager.h"
 #include "EnemyManager.h"
@@ -29,8 +32,6 @@ int main()
         screenHeight,
         "Aetherfall"
     );
-
-    SetExitKey(KEY_NULL);
 
     SetExitKey(KEY_NULL);
 
@@ -74,15 +75,24 @@ int main()
     CoinManager coinManager;
 
     ScoreManager scoreManager;
+
     Shop shop;
+
+    // Boss gövde merkezi yerden yüksekte olmalıdır.
+    Boss boss(
+        Vector3{ 0.0f, 3.3f, -10.0f }
+    );
+
+    bool bossFightActive = false;
+    bool bossRewardGranted = false;
+
+    AetherCore aetherCore;
 
     GameState gameState =
         GameState::Playing;
 
     int currentLevel = 1;
 
-    // Oyuncu mevcut bölümü yeniden başlatırsa
-    // dönülecek puanı saklar.
     int levelStartScore = 0;
 
     const Vector3 cameraOffset{
@@ -145,15 +155,56 @@ int main()
 
             player = Player();
 
+            combatSystem =
+                CombatSystem();
+
+            boss =
+                Boss(
+                    Vector3{
+                        0.0f,
+                        3.3f,
+                        -10.0f
+                    }
+                );
+
+            bossFightActive = false;
+            bossRewardGranted = false;
+
+            aetherCore.Reset();
+
             keys.clear();
 
-            keys.emplace_back(Vector3{ -8.0f, 0.5f, -8.0f });
-            keys.emplace_back(Vector3{ 8.0f, 0.5f, -5.0f });
-            keys.emplace_back(Vector3{ 0.0f, 0.5f, 8.0f });
+            keys.emplace_back(
+                Vector3{
+                    -8.0f,
+                    0.5f,
+                    -8.0f
+                }
+            );
+
+            keys.emplace_back(
+                Vector3{
+                    8.0f,
+                    0.5f,
+                    -5.0f
+                }
+            );
+
+            keys.emplace_back(
+                Vector3{
+                    0.0f,
+                    0.5f,
+                    8.0f
+                }
+            );
 
             exitDoor =
                 ExitDoor(
-                    Vector3{ 18.0f, 1.5f, 0.0f }
+                    Vector3{
+                        18.0f,
+                        1.5f,
+                        0.0f
+                    }
                 );
 
             collectedKeys = 0;
@@ -170,9 +221,14 @@ int main()
             cameraShakeTime = 0.0f;
 
             camera.position = {
-                player.GetPosition().x + cameraOffset.x,
-                player.GetPosition().y + cameraOffset.y,
-                player.GetPosition().z + cameraOffset.z
+                player.GetPosition().x +
+                cameraOffset.x,
+
+                player.GetPosition().y +
+                cameraOffset.y,
+
+                player.GetPosition().z +
+                cameraOffset.z
             };
 
             camera.target =
@@ -189,7 +245,6 @@ int main()
             IsKeyPressed(KEY_ENTER)
             )
         {
-            // Level 1 sonunda kazanılan puanı sakla.
             levelStartScore =
                 scoreManager.GetScore();
 
@@ -199,25 +254,37 @@ int main()
 
             keys.clear();
 
-            // Level 2 anahtar konumları
-
             keys.emplace_back(
-                Vector3{ -14.0f, 0.5f, 6.0f }
+                Vector3{
+                    -14.0f,
+                    0.5f,
+                    6.0f
+                }
             );
 
             keys.emplace_back(
-                Vector3{ 12.0f, 0.5f, 10.0f }
+                Vector3{
+                    12.0f,
+                    0.5f,
+                    10.0f
+                }
             );
 
             keys.emplace_back(
-                Vector3{ 6.0f, 0.5f, -14.0f }
+                Vector3{
+                    6.0f,
+                    0.5f,
+                    -14.0f
+                }
             );
-
-            // Level 2 çıkış kapısı
 
             exitDoor =
                 ExitDoor(
-                    Vector3{ -18.0f, 1.5f, -12.0f }
+                    Vector3{
+                        -18.0f,
+                        1.5f,
+                        -12.0f
+                    }
                 );
 
             collectedKeys = 0;
@@ -226,8 +293,22 @@ int main()
 
             coinManager.Reset();
 
-            combatSystem =
-                CombatSystem();
+            boss =
+                Boss(
+                    Vector3{
+                        0.0f,
+                        3.3f,
+                        -10.0f
+                    }
+                );
+
+            bossFightActive = false;
+            bossRewardGranted = false;
+
+            aetherCore.Reset();
+
+            // CombatSystem burada sıfırlanmıyor.
+            // Böylece Shop'tan alınan damage upgrade korunur.
 
             gameState =
                 GameState::Playing;
@@ -235,9 +316,14 @@ int main()
             cameraShakeTime = 0.0f;
 
             camera.position = {
-                player.GetPosition().x + cameraOffset.x,
-                player.GetPosition().y + cameraOffset.y,
-                player.GetPosition().z + cameraOffset.z
+                player.GetPosition().x +
+                cameraOffset.x,
+
+                player.GetPosition().y +
+                cameraOffset.y,
+
+                player.GetPosition().z +
+                cameraOffset.z
             };
 
             camera.target =
@@ -262,79 +348,145 @@ int main()
                     deltaTime
                 );
 
-                enemyManager.Update(
-                    deltaTime,
-                    player.GetPosition()
-                );
+                if (bossFightActive)
+                {
+                    combatSystem.UpdateBoss(
+                        deltaTime,
+                        player,
+                        boss
+                    );
+                }
+                else
+                {
+                    enemyManager.Update(
+                        deltaTime,
+                        player.GetPosition()
+                    );
 
-                combatSystem.Update(
-                   deltaTime,
-                   player,
-                   enemyManager.GetEnemies()
-                );
+                    combatSystem.Update(
+                        deltaTime,
+                        player,
+                        enemyManager.GetEnemies()
+                    );
+                }
             }
 
-                
-
             // =================================================
-            // SCORE CONTROL
+            // NORMAL ENEMY SCORE AND COINS
             // =================================================
 
-            for (
-                Enemy& enemy :
-                enemyManager.GetEnemies()
-                )
+            if (!bossFightActive)
             {
-                if (
-                    !enemy.IsAlive() &&
-                    !enemy.ScoreAlreadyGiven()
+                for (
+                    Enemy& enemy :
+                    enemyManager.GetEnemies()
                     )
                 {
-                    scoreManager.AddScore(
-                        enemy.GetScoreValue()
-                    );
+                    if (
+                        !enemy.IsAlive() &&
+                        !enemy.ScoreAlreadyGiven()
+                        )
+                    {
+                        scoreManager.AddScore(
+                            enemy.GetScoreValue()
+                        );
 
-                    coinManager.SpawnCoin(
-                        enemy.GetPosition()
-                    );
+                        coinManager.SpawnCoin(
+                            enemy.GetPosition()
+                        );
 
-                    enemy.MarkScoreGiven();
+                        enemy.MarkScoreGiven();
+                    }
                 }
             }
 
-            coinCount += coinManager.Update(
-                deltaTime,
-                player.GetPosition()
-            );
+            coinCount +=
+                coinManager.Update(
+                    deltaTime,
+                    player.GetPosition()
+                );
 
             // =================================================
-            // KEY UPDATE
+            // KEYS AND EXIT DOOR
             // =================================================
 
-            for (auto& key : keys)
+            if (!bossFightActive)
             {
-                key.Update(
+                for (auto& key : keys)
+                {
+                    key.Update(
+                        deltaTime,
+                        player.GetPosition()
+                    );
+                }
+
+                collectedKeys = 0;
+
+                for (const auto& key : keys)
+                {
+                    if (key.IsCollected())
+                    {
+                        collectedKeys++;
+                    }
+                }
+
+                exitDoor.Update(
+                    player.GetPosition(),
+                    collectedKeys == totalKeys
+                );
+
+                if (exitDoor.PlayerReachedDoor())
+                {
+                    if (currentLevel == 1)
+                    {
+                        gameState =
+                            GameState::LevelComplete;
+                    }
+                    else
+                    {
+                        // Level 2 kapısı oyunu bitirmez.
+                        // Boss savaşını başlatır.
+                        bossFightActive = true;
+                    }
+                }
+            }
+
+            // =================================================
+            // BOSS DEFEATED
+            // =================================================
+
+            if (
+                bossFightActive &&
+                !boss.IsAlive() &&
+                !bossRewardGranted
+                )
+            {
+                scoreManager.AddScore(
+                    2000
+                );
+
+                aetherCore.Spawn(
+                    boss.GetPosition()
+                );
+
+                bossRewardGranted = true;
+            }
+
+            if (
+                bossFightActive &&
+                aetherCore.IsSpawned()
+                )
+            {
+                aetherCore.Update(
                     deltaTime,
                     player.GetPosition()
                 );
             }
 
-            collectedKeys = 0;
-
-            for (const auto& key : keys)
-            {
-                if (key.IsCollected())
-                {
-                    collectedKeys++;
-                }
-            }
-
-            exitDoor.Update(
-                player.GetPosition(),
-                collectedKeys == totalKeys
-            );
-
-            if (exitDoor.PlayerReachedDoor())
+            if (
+                bossFightActive &&
+                aetherCore.IsCollected()
+                )
             {
                 gameState =
                     GameState::LevelComplete;
@@ -389,8 +541,7 @@ int main()
 
         if (cameraShakeTime > 0.0f)
         {
-            cameraShakeTime -=
-                deltaTime;
+            cameraShakeTime -= deltaTime;
 
             camera.position.x +=
                 GetRandomValue(
@@ -429,12 +580,12 @@ int main()
         );
 
         DrawPlane(
-            {
+            Vector3{
                 0.0f,
                 0.0f,
                 0.0f
             },
-            {
+            Vector2{
                 50.0f,
                 50.0f
             },
@@ -448,28 +599,39 @@ int main()
 
         player.Draw();
 
-        enemyManager.Draw();
+        if (bossFightActive)
+        {
+            boss.Draw();
+            aetherCore.Draw();
+        }
+        else
+        {
+            enemyManager.Draw();
+
+            for (const auto& key : keys)
+            {
+                key.Draw();
+            }
+
+            exitDoor.Draw();
+        }
 
         coinManager.Draw();
 
-        for (const auto& key : keys)
-        {
-            key.Draw();
-        }
-
-        exitDoor.Draw();
-
         EndMode3D();
 
-        for (
-            const Enemy& enemy :
-            enemyManager.GetEnemies()
-            )
+        if (!bossFightActive)
         {
-            UI::DrawEnemyHealthBar(
-                enemy,
-                camera
-            );
+            for (
+                const Enemy& enemy :
+                enemyManager.GetEnemies()
+                )
+            {
+                UI::DrawEnemyHealthBar(
+                    enemy,
+                    camera
+                );
+            }
         }
 
         UI::DrawHUD(
@@ -486,9 +648,52 @@ int main()
             coinCount
         );
 
-        UI::DrawWaveInformation(
-            enemyManager
-        );
+        if (!bossFightActive)
+        {
+            UI::DrawWaveInformation(
+                enemyManager
+            );
+        }
+
+        // =====================================================
+        // PROFESSIONAL BOSS HUD
+        // =====================================================
+
+        if (
+            bossFightActive &&
+            boss.IsAlive()
+            )
+        {
+            BossHUD::Draw(
+                boss
+            );
+        }
+
+        if (
+            bossFightActive &&
+            aetherCore.IsSpawned()
+            )
+        {
+            const char* coreText =
+                "Collect the Aether Core!";
+
+            const int coreFontSize = 28;
+
+            const int coreTextWidth =
+                MeasureText(
+                    coreText,
+                    coreFontSize
+                );
+
+            DrawText(
+                coreText,
+                GetScreenWidth() / 2 -
+                coreTextWidth / 2,
+                70,
+                coreFontSize,
+                SKYBLUE
+            );
+        }
 
         // =====================================================
         // LEVEL NUMBER
@@ -580,7 +785,7 @@ int main()
         }
 
         // =====================================================
-        // LEVEL COMPLETE
+        // LEVEL COMPLETE / GAME COMPLETE
         // =====================================================
 
         if (gameState == GameState::LevelComplete)
@@ -624,7 +829,7 @@ int main()
             const char* continueText =
                 currentLevel == 1
                 ? "Press ENTER to Start Level 2"
-                : "You Escaped Aetherfall!";
+                : "You Defeated the Aether Titan!";
 
             const int continueFontSize = 26;
 
@@ -652,7 +857,6 @@ int main()
         );
 
         EndDrawing();
-
     }
 
     CloseWindow();

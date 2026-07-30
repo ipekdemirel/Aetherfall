@@ -9,7 +9,8 @@ public:
 
     void Update(
         float deltaTime,
-        Vector3 playerPosition
+        Vector3 playerPosition,
+        Vector3 separationForce
     );
 
     void Draw() const;
@@ -28,6 +29,8 @@ public:
     float GetHealth() const;
     float GetMaxHealth() const;
 
+    bool IsAlerted() const;
+
     // ==========================
     // SCORE SYSTEM
     // ==========================
@@ -40,9 +43,12 @@ public:
 
 private:
     Vector3 position;
+    Vector3 homePosition;
     Vector3 knockbackVelocity;
+    Vector3 facingDirection;
 
     float moveSpeed;
+    float returnSpeed;
 
     float health;
     float maxHealth;
@@ -50,6 +56,19 @@ private:
     float hitFlashTimer;
     float hitFlashDuration;
 
+    // ==========================
+    // DETECTION SYSTEM
+    // ==========================
+
+    float detectionRange;
+    float loseTargetRange;
+
+    float forgetDuration;
+    float forgetTimer;
+
+    float homeStopDistance;
+
+    bool alerted;
     bool alive;
 
     // ==========================

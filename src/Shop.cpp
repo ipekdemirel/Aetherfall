@@ -3,9 +3,32 @@
 #include "CombatSystem.h"
 #include "Player.h"
 
+#include <cstdio>
+
+namespace
+{
+    constexpr int HealCost = 10;
+    constexpr int HealAmount = 25;
+
+    constexpr int UpgradeCount = 6;
+
+    const Color PanelColor{ 18, 22, 35, 248 };
+    const Color CardColor{ 31, 38, 58, 255 };
+    const Color CardHoverColor{ 42, 52, 78, 255 };
+    const Color GoldColor{ 242, 190, 75, 255 };
+    const Color AccentColor{ 91, 192, 235, 255 };
+    const Color SuccessColor{ 90, 210, 130, 255 };
+    const Color ErrorColor{ 245, 100, 100, 255 };
+}
+
 Shop::Shop()
     :
     isOpen(false),
+    damageLevel(0),
+    armorLevel(0),
+    maxHealthLevel(0),
+    speedLevel(0),
+    dashLevel(0),
     messageTimer(0.0f),
     messageType(MessageType::None)
 {
@@ -18,53 +41,32 @@ bool Shop::IsOpen() const
 
 Rectangle Shop::GetPanelRectangle() const
 {
-    const float panelWidth =
-        760.0f;
-
-    const float panelHeight =
-        520.0f;
+    const float width = 900.0f;
+    const float height = 650.0f;
 
     return Rectangle{
-        GetScreenWidth() / 2.0f -
-        panelWidth / 2.0f,
-
-        GetScreenHeight() / 2.0f -
-        panelHeight / 2.0f,
-
-        panelWidth,
-        panelHeight
+        GetScreenWidth() / 2.0f - width / 2.0f,
+        GetScreenHeight() / 2.0f - height / 2.0f,
+        width,
+        height
     };
 }
 
-Rectangle Shop::GetHealButton() const
+Rectangle Shop::GetUpgradeButton(int index) const
 {
-    const Rectangle panel =
-        GetPanelRectangle();
+    const Rectangle panel = GetPanelRectangle();
+    const int column = index % 2;
+    const int row = index / 2;
 
     return Rectangle{
-        panel.x + 50.0f,
-        panel.y + 150.0f,
-        panel.width - 100.0f,
-        80.0f
+        panel.x + 40.0f + column * 420.0f,
+        panel.y + 130.0f + row * 118.0f,
+        400.0f,
+        96.0f
     };
 }
 
-Rectangle Shop::GetDamageButton() const
-{
-    const Rectangle panel =
-        GetPanelRectangle();
-
-    return Rectangle{
-        panel.x + 50.0f,
-        panel.y + 250.0f,
-        panel.width - 100.0f,
-        80.0f
-    };
-}
-
-bool Shop::IsMouseOver(
-    const Rectangle& rectangle
-) const
+bool Shop::IsMouseOver(const Rectangle& rectangle) const
 {
     return CheckCollisionPointRec(
         GetMousePosition(),
@@ -72,15 +74,155 @@ bool Shop::IsMouseOver(
     );
 }
 
-void Shop::ShowMessage(
-    MessageType newMessage
+void Shop::ShowMessage(MessageType newMessage)
+{
+    messageType = newMessage;
+    messageTimer = 2.0f;
+}
+
+int Shop::GetLevel(UpgradeType type) const
+{
+    switch (type)
+    {
+    case UpgradeType::Damage:
+        return damageLevel;
+    case UpgradeType::Armor:
+        return armorLevel;
+    case UpgradeType::MaxHealth:
+        return maxHealthLevel;
+    case UpgradeType::Speed:
+        return speedLevel;
+    case UpgradeType::Dash:
+        return dashLevel;
+    default:
+        return 0;
+    }
+}
+
+int Shop::GetMaximumLevel(UpgradeType type) const
+{
+    if (type == UpgradeType::Heal)
+    {
+        return 0;
+    }
+
+    return 5;
+}
+
+int Shop::GetCost(UpgradeType type) const
+{
+    const int level = GetLevel(type);
+
+    switch (type)
+    {
+    case UpgradeType::Heal:
+        return HealCost;
+    case UpgradeType::Damage:
+        return 25 + level * 15;
+    case UpgradeType::Armor:
+        return 20 + level * 15;
+    case UpgradeType::MaxHealth:
+        return 30 + level * 20;
+    case UpgradeType::Speed:
+        return 25 + level * 20;
+    case UpgradeType::Dash:
+        return 35 + level * 25;
+    }
+
+    return 0;
+}
+
+const char* Shop::GetName(UpgradeType type) const
+{
+    switch (type)
+    {
+    case UpgradeType::Heal:
+        return "HEAL";
+    case UpgradeType::Damage:
+        return "DAMAGE";
+    case UpgradeType::Armor:
+        return "ARMOR";
+    case UpgradeType::MaxHealth:
+        return "MAX HP";
+    case UpgradeType::Speed:
+        return "SPEED";
+    case UpgradeType::Dash:
+        return "DASH";
+    }
+
+    return "";
+}
+
+void Shop::TryPurchase(
+    UpgradeType type,
+    Player& player,
+    CombatSystem& combatSystem,
+    int& coinCount
 )
 {
-    messageType =
-        newMessage;
+    if (
+        type == UpgradeType::Heal &&
+        player.GetHealth() >= player.GetMaxHealth()
+        )
+    {
+        ShowMessage(MessageType::HealthAlreadyFull);
+        return;
+    }
 
-    messageTimer =
-        2.0f;
+    const int maximumLevel = GetMaximumLevel(type);
+
+    if (
+        maximumLevel > 0 &&
+        GetLevel(type) >= maximumLevel
+        )
+    {
+        ShowMessage(MessageType::MaximumLevel);
+        return;
+    }
+
+    const int cost = GetCost(type);
+
+    if (coinCount < cost)
+    {
+        ShowMessage(MessageType::NotEnoughCoins);
+        return;
+    }
+
+    coinCount -= cost;
+
+    switch (type)
+    {
+    case UpgradeType::Heal:
+        player.Heal(HealAmount);
+        break;
+
+    case UpgradeType::Damage:
+        combatSystem.IncreasePlayerAttackDamage(5.0f);
+        ++damageLevel;
+        break;
+
+    case UpgradeType::Armor:
+        player.IncreaseArmor(0.05f);
+        ++armorLevel;
+        break;
+
+    case UpgradeType::MaxHealth:
+        player.IncreaseMaxHealth(20);
+        ++maxHealthLevel;
+        break;
+
+    case UpgradeType::Speed:
+        player.IncreaseMovementSpeed(0.4f, 0.5f);
+        ++speedLevel;
+        break;
+
+    case UpgradeType::Dash:
+        player.ReduceDashCooldown(0.08f);
+        ++dashLevel;
+        break;
+    }
+
+    ShowMessage(MessageType::Purchased);
 }
 
 void Shop::Update(
@@ -89,35 +231,22 @@ void Shop::Update(
     int& coinCount
 )
 {
-    const float deltaTime =
-        GetFrameTime();
-
     if (messageTimer > 0.0f)
     {
-        messageTimer -=
-            deltaTime;
+        messageTimer -= GetFrameTime();
 
         if (messageTimer <= 0.0f)
         {
-            messageTimer =
-                0.0f;
-
-            messageType =
-                MessageType::None;
+            messageTimer = 0.0f;
+            messageType = MessageType::None;
         }
     }
 
     if (IsKeyPressed(KEY_B))
     {
-        isOpen =
-            !isOpen;
-
-        messageType =
-            MessageType::None;
-
-        messageTimer =
-            0.0f;
-
+        isOpen = !isOpen;
+        messageType = MessageType::None;
+        messageTimer = 0.0f;
         return;
     }
 
@@ -128,109 +257,29 @@ void Shop::Update(
 
     if (IsKeyPressed(KEY_ESCAPE))
     {
-        isOpen =
-            false;
-
-        messageType =
-            MessageType::None;
-
-        messageTimer =
-            0.0f;
-
+        isOpen = false;
+        messageType = MessageType::None;
+        messageTimer = 0.0f;
         return;
     }
 
-    if (
-        IsMouseButtonPressed(
-            MOUSE_BUTTON_LEFT
-        )
-        )
+    if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
     {
-        const Rectangle healButton =
-            GetHealButton();
+        return;
+    }
 
-        const Rectangle damageButton =
-            GetDamageButton();
-
-        // =============================================
-        // HEAL PURCHASE
-        // =============================================
-
-        if (IsMouseOver(healButton))
+    for (int index = 0; index < UpgradeCount; ++index)
+    {
+        if (IsMouseOver(GetUpgradeButton(index)))
         {
-            const int healCost =
-                10;
-
-            const int healAmount =
-                25;
-
-            if (
-                player.GetHealth() >=
-                player.GetMaxHealth()
-                )
-            {
-                ShowMessage(
-                    MessageType::HealthAlreadyFull
-                );
-
-                return;
-            }
-
-            if (coinCount < healCost)
-            {
-                ShowMessage(
-                    MessageType::NotEnoughCoins
-                );
-
-                return;
-            }
-
-            coinCount -=
-                healCost;
-
-            player.Heal(
-                healAmount
-            );
-
-            ShowMessage(
-                MessageType::HealthPurchased
+            TryPurchase(
+                static_cast<UpgradeType>(index),
+                player,
+                combatSystem,
+                coinCount
             );
 
             return;
-        }
-
-        // =============================================
-        // DAMAGE PURCHASE
-        // =============================================
-
-        if (IsMouseOver(damageButton))
-        {
-            const int damageCost =
-                25;
-
-            const float damageIncrease =
-                10.0f;
-
-            if (coinCount < damageCost)
-            {
-                ShowMessage(
-                    MessageType::NotEnoughCoins
-                );
-
-                return;
-            }
-
-            coinCount -=
-                damageCost;
-
-            combatSystem
-                .IncreasePlayerAttackDamage(
-                    damageIncrease
-                );
-
-            ShowMessage(
-                MessageType::DamagePurchased
-            );
         }
     }
 }
@@ -246,327 +295,266 @@ void Shop::Draw(
         return;
     }
 
-    const int screenWidth =
-        GetScreenWidth();
-
-    const int screenHeight =
-        GetScreenHeight();
-
     DrawRectangle(
         0,
         0,
-        screenWidth,
-        screenHeight,
-        Color{
-            0,
-            0,
-            0,
-            140
-        }
+        GetScreenWidth(),
+        GetScreenHeight(),
+        Color{ 0, 0, 0, 170 }
     );
 
-    const Rectangle panel =
-        GetPanelRectangle();
+    const Rectangle panel = GetPanelRectangle();
 
-    DrawRectangleRec(
+    DrawRectangleRounded(
         panel,
-        Color{
-            15,
-            18,
-            22,
-            248
-        }
+        0.035f,
+        12,
+        PanelColor
     );
 
-    DrawRectangleLinesEx(
+    DrawRectangleRoundedLinesEx(
         panel,
+        0.035f,
+        12,
         3.0f,
-        GOLD
-    );
-
-    // =============================================
-    // TITLE
-    // =============================================
-
-    const char* title =
-        "SHOP";
-
-    const int titleFontSize =
-        44;
-
-    const int titleWidth =
-        MeasureText(
-            title,
-            titleFontSize
-        );
-
-    DrawText(
-        title,
-        static_cast<int>(
-            panel.x +
-            panel.width / 2.0f -
-            titleWidth / 2.0f
-            ),
-        static_cast<int>(
-            panel.y + 22.0f
-            ),
-        titleFontSize,
-        GOLD
+        GoldColor
     );
 
     DrawText(
-        TextFormat(
-            "Coins: %d",
-            coinCount
-        ),
-        static_cast<int>(
-            panel.x + 50.0f
-            ),
-        static_cast<int>(
-            panel.y + 95.0f
-            ),
-        25,
-        GOLD
+        "AETHER SHOP",
+        static_cast<int>(panel.x + 40.0f),
+        static_cast<int>(panel.y + 28.0f),
+        36,
+        GoldColor
+    );
+
+    char coinText[64];
+    std::snprintf(
+        coinText,
+        sizeof(coinText),
+        "COINS: %d",
+        coinCount
+    );
+
+    const int coinTextWidth = MeasureText(coinText, 26);
+
+    DrawText(
+        coinText,
+        static_cast<int>(panel.x + panel.width - 40.0f - coinTextWidth),
+        static_cast<int>(panel.y + 35.0f),
+        26,
+        GoldColor
     );
 
     DrawText(
-        TextFormat(
-            "Health: %d / %d",
-            player.GetHealth(),
-            player.GetMaxHealth()
-        ),
-        static_cast<int>(
-            panel.x +
-            panel.width -
-            280.0f
-            ),
-        static_cast<int>(
-            panel.y + 95.0f
-            ),
-        25,
-        GREEN
-    );
-
-    // =============================================
-    // HEAL BUTTON
-    // =============================================
-
-    const Rectangle healButton =
-        GetHealButton();
-
-    const bool healButtonHovered =
-        IsMouseOver(
-            healButton
-        );
-
-    DrawRectangleRec(
-        healButton,
-        healButtonHovered
-        ? Color{ 70, 70, 75, 255 }
-        : Color{ 40, 40, 45, 255 }
-    );
-
-    DrawRectangleLinesEx(
-        healButton,
-        2.0f,
-        healButtonHovered
-        ? YELLOW
-        : LIGHTGRAY
-    );
-
-    DrawText(
-        "HEAL +25 HP",
-        static_cast<int>(
-            healButton.x + 25.0f
-            ),
-        static_cast<int>(
-            healButton.y + 14.0f
-            ),
-        28,
-        WHITE
-    );
-
-    DrawText(
-        "10 COINS",
-        static_cast<int>(
-            healButton.x +
-            healButton.width -
-            165.0f
-            ),
-        static_cast<int>(
-            healButton.y + 14.0f
-            ),
-        28,
-        GOLD
-    );
-
-    DrawText(
-        "Restore lost health",
-        static_cast<int>(
-            healButton.x + 25.0f
-            ),
-        static_cast<int>(
-            healButton.y + 50.0f
-            ),
-        18,
-        GRAY
-    );
-
-    // =============================================
-    // DAMAGE BUTTON
-    // =============================================
-
-    const Rectangle damageButton =
-        GetDamageButton();
-
-    const bool damageButtonHovered =
-        IsMouseOver(
-            damageButton
-        );
-
-    DrawRectangleRec(
-        damageButton,
-        damageButtonHovered
-        ? Color{ 70, 70, 75, 255 }
-        : Color{ 40, 40, 45, 255 }
-    );
-
-    DrawRectangleLinesEx(
-        damageButton,
-        2.0f,
-        damageButtonHovered
-        ? YELLOW
-        : LIGHTGRAY
-    );
-
-    DrawText(
-        "SWORD DAMAGE +10",
-        static_cast<int>(
-            damageButton.x + 25.0f
-            ),
-        static_cast<int>(
-            damageButton.y + 14.0f
-            ),
-        27,
-        WHITE
-    );
-
-    DrawText(
-        "25 COINS",
-        static_cast<int>(
-            damageButton.x +
-            damageButton.width -
-            165.0f
-            ),
-        static_cast<int>(
-            damageButton.y + 14.0f
-            ),
-        28,
-        GOLD
-    );
-
-    DrawText(
-        TextFormat(
-            "Current damage: %d",
-            static_cast<int>(
-                combatSystem
-                .GetPlayerAttackDamage()
-                )
-        ),
-        static_cast<int>(
-            damageButton.x + 25.0f
-            ),
-        static_cast<int>(
-            damageButton.y + 50.0f
-            ),
-        18,
-        GRAY
-    );
-
-    // =============================================
-    // MESSAGE
-    // =============================================
-
-    if (
-        messageType ==
-        MessageType::HealthPurchased
-        )
-    {
-        DrawText(
-            "Health restored!",
-            static_cast<int>(
-                panel.x + 50.0f
-                ),
-            static_cast<int>(
-                panel.y + 355.0f
-                ),
-            25,
-            GREEN
-        );
-    }
-    else if (
-        messageType ==
-        MessageType::DamagePurchased
-        )
-    {
-        DrawText(
-            "Sword damage increased!",
-            static_cast<int>(
-                panel.x + 50.0f
-                ),
-            static_cast<int>(
-                panel.y + 355.0f
-                ),
-            25,
-            GREEN
-        );
-    }
-    else if (
-        messageType ==
-        MessageType::NotEnoughCoins
-        )
-    {
-        DrawText(
-            "Not enough coins!",
-            static_cast<int>(
-                panel.x + 50.0f
-                ),
-            static_cast<int>(
-                panel.y + 355.0f
-                ),
-            25,
-            RED
-        );
-    }
-    else if (
-        messageType ==
-        MessageType::HealthAlreadyFull
-        )
-    {
-        DrawText(
-            "Health is already full!",
-            static_cast<int>(
-                panel.x + 50.0f
-                ),
-            static_cast<int>(
-                panel.y + 355.0f
-                ),
-            25,
-            SKYBLUE
-        );
-    }
-
-    DrawText(
-        "B or ESC : Close Shop",
-        static_cast<int>(
-            panel.x + 50.0f
-            ),
-        static_cast<int>(
-            panel.y +
-            panel.height -
-            48.0f
-            ),
-        22,
+        "Buy upgrades to strengthen your character",
+        static_cast<int>(panel.x + 42.0f),
+        static_cast<int>(panel.y + 78.0f),
+        19,
         LIGHTGRAY
+    );
+
+    for (int index = 0; index < UpgradeCount; ++index)
+    {
+        const UpgradeType type =
+            static_cast<UpgradeType>(index);
+
+        const Rectangle button =
+            GetUpgradeButton(index);
+
+        const bool hovered =
+            IsMouseOver(button);
+
+        const int level = GetLevel(type);
+        const int maximumLevel = GetMaximumLevel(type);
+        const bool isMaximum =
+            maximumLevel > 0 &&
+            level >= maximumLevel;
+
+        DrawRectangleRounded(
+            button,
+            0.12f,
+            8,
+            hovered ? CardHoverColor : CardColor
+        );
+
+        DrawRectangleRoundedLinesEx(
+            button,
+            0.12f,
+            8,
+            hovered ? 3.0f : 1.5f,
+            hovered ? AccentColor : Color{ 72, 88, 120, 255 }
+        );
+
+        DrawText(
+            GetName(type),
+            static_cast<int>(button.x + 18.0f),
+            static_cast<int>(button.y + 15.0f),
+            24,
+            WHITE
+        );
+
+        char levelText[32];
+
+        if (type == UpgradeType::Heal)
+        {
+            std::snprintf(
+                levelText,
+                sizeof(levelText),
+                "+%d HP",
+                HealAmount
+            );
+        }
+        else
+        {
+            std::snprintf(
+                levelText,
+                sizeof(levelText),
+                "LV %d / %d",
+                level,
+                maximumLevel
+            );
+        }
+
+        DrawText(
+            levelText,
+            static_cast<int>(button.x + 18.0f),
+            static_cast<int>(button.y + 56.0f),
+            18,
+            LIGHTGRAY
+        );
+
+        char costText[32];
+
+        if (isMaximum)
+        {
+            std::snprintf(
+                costText,
+                sizeof(costText),
+                "MAX"
+            );
+        }
+        else
+        {
+            std::snprintf(
+                costText,
+                sizeof(costText),
+                "%d COIN",
+                GetCost(type)
+            );
+        }
+
+        const int costWidth =
+            MeasureText(costText, 20);
+
+        DrawText(
+            costText,
+            static_cast<int>(
+                button.x +
+                button.width -
+                18.0f -
+                costWidth
+                ),
+            static_cast<int>(button.y + 60.0f),
+            20,
+            isMaximum ? SuccessColor : GoldColor
+        );
+    }
+
+    const float statsY = panel.y + 505.0f;
+
+    DrawLineEx(
+        Vector2{ panel.x + 40.0f, statsY - 18.0f },
+        Vector2{ panel.x + panel.width - 40.0f, statsY - 18.0f },
+        2.0f,
+        Color{ 60, 72, 100, 255 }
+    );
+
+    char statsLineOne[160];
+    std::snprintf(
+        statsLineOne,
+        sizeof(statsLineOne),
+        "HP: %d / %d     DAMAGE: %.0f     ARMOR: %.0f%%",
+        player.GetHealth(),
+        player.GetMaxHealth(),
+        combatSystem.GetPlayerAttackDamage(),
+        player.GetArmor() * 100.0f
+    );
+
+    DrawText(
+        statsLineOne,
+        static_cast<int>(panel.x + 40.0f),
+        static_cast<int>(statsY),
+        21,
+        WHITE
+    );
+
+    char statsLineTwo[160];
+    std::snprintf(
+        statsLineTwo,
+        sizeof(statsLineTwo),
+        "WALK: %.1f     RUN: %.1f     DASH COOLDOWN: %.2f s",
+        player.GetWalkSpeed(),
+        player.GetRunSpeed(),
+        player.GetDashCooldown()
+    );
+
+    DrawText(
+        statsLineTwo,
+        static_cast<int>(panel.x + 40.0f),
+        static_cast<int>(statsY + 36.0f),
+        21,
+        WHITE
+    );
+
+    const char* message = "";
+    Color messageColor = WHITE;
+
+    switch (messageType)
+    {
+    case MessageType::Purchased:
+        message = "Purchase successful!";
+        messageColor = SuccessColor;
+        break;
+    case MessageType::NotEnoughCoins:
+        message = "Not enough coins!";
+        messageColor = ErrorColor;
+        break;
+    case MessageType::HealthAlreadyFull:
+        message = "Health is already full!";
+        messageColor = ErrorColor;
+        break;
+    case MessageType::MaximumLevel:
+        message = "This upgrade is already at maximum level!";
+        messageColor = GoldColor;
+        break;
+    default:
+        break;
+    }
+
+    if (messageType != MessageType::None)
+    {
+        const int messageWidth =
+            MeasureText(message, 20);
+
+        DrawText(
+            message,
+            static_cast<int>(
+                panel.x +
+                panel.width / 2.0f -
+                messageWidth / 2.0f
+                ),
+            static_cast<int>(panel.y + 592.0f),
+            20,
+            messageColor
+        );
+    }
+
+    DrawText(
+        "B or ESC: Close",
+        static_cast<int>(panel.x + 40.0f),
+        static_cast<int>(panel.y + panel.height - 30.0f),
+        17,
+        GRAY
     );
 }

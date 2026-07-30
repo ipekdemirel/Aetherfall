@@ -16,7 +16,8 @@ Player::Player()
     dashCooldownTimer(0.0f),
     isDashing(false),
     health(100),
-    maxHealth(100)
+    maxHealth(100),
+    armor(0.0f)
 {
 }
 
@@ -417,7 +418,28 @@ float Player::GetAttackProgress() const
 }
 void Player::TakeDamage(int damage)
 {
-    health -= damage;
+    if (damage <= 0)
+    {
+        return;
+    }
+
+    const float damageMultiplier =
+        1.0f - armor;
+
+    int finalDamage =
+        static_cast<int>(
+            std::round(
+                static_cast<float>(damage) *
+                damageMultiplier
+            )
+            );
+
+    if (finalDamage < 1)
+    {
+        finalDamage = 1;
+    }
+
+    health -= finalDamage;
 
     if (health < 0)
     {
@@ -442,10 +464,97 @@ bool Player::IsAlive() const
 
 void Player::Heal(int amount)
 {
+    if (amount <= 0)
+    {
+        return;
+    }
+
     health += amount;
 
     if (health > maxHealth)
     {
         health = maxHealth;
     }
+}
+
+void Player::IncreaseMaxHealth(int amount)
+{
+    if (amount <= 0)
+    {
+        return;
+    }
+
+    maxHealth += amount;
+    health += amount;
+}
+
+void Player::IncreaseArmor(float amount)
+{
+    if (amount <= 0.0f)
+    {
+        return;
+    }
+
+    armor += amount;
+
+    if (armor > 0.50f)
+    {
+        armor = 0.50f;
+    }
+}
+
+void Player::IncreaseMovementSpeed(
+    float walkAmount,
+    float runAmount
+)
+{
+    if (walkAmount > 0.0f)
+    {
+        walkSpeed += walkAmount;
+    }
+
+    if (runAmount > 0.0f)
+    {
+        runSpeed += runAmount;
+    }
+}
+
+void Player::ReduceDashCooldown(float amount)
+{
+    if (amount <= 0.0f)
+    {
+        return;
+    }
+
+    dashCooldown -= amount;
+
+    if (dashCooldown < 0.35f)
+    {
+        dashCooldown = 0.35f;
+    }
+
+    if (dashCooldownTimer > dashCooldown)
+    {
+        dashCooldownTimer = dashCooldown;
+    }
+}
+
+float Player::GetArmor() const
+{
+    return armor;
+}
+
+float Player::GetWalkSpeed() const
+{
+    return walkSpeed;
+}
+
+float Player::GetRunSpeed() const
+{
+    return runSpeed;
+}
+
+float Player::GetDashCooldown() const
+{
+    return dashCooldown;
 }

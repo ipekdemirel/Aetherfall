@@ -4,23 +4,28 @@
 
 class Player;
 class Enemy;
+class Boss;
 
 class CombatSystem
 {
 public:
     CombatSystem();
 
+    // Normal enemy combat
     void Update(
         float deltaTime,
         Player& player,
         std::vector<Enemy>& enemies
     );
 
-    bool ConsumeCameraShakeRequest();
+    // Boss combat
+    void UpdateBoss(
+        float deltaTime,
+        Player& player,
+        Boss& boss
+    );
 
-    // ==========================
-    // PLAYER DAMAGE UPGRADE
-    // ==========================
+    bool ConsumeCameraShakeRequest();
 
     void IncreasePlayerAttackDamage(
         float amount
@@ -32,6 +37,11 @@ private:
     void HandlePlayerAttack(
         Player& player,
         std::vector<Enemy>& enemies
+    );
+
+    void HandlePlayerAttackBoss(
+        Player& player,
+        Boss& boss
     );
 
     void HandleEnemyAttacks(

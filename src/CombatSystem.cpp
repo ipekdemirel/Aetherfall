@@ -1,5 +1,6 @@
 #include "CombatSystem.h"
 
+#include "Boss.h"
 #include "Enemy.h"
 #include "Player.h"
 
@@ -36,6 +37,30 @@ void CombatSystem::Update(
         player,
         enemies
     );
+}
+
+void CombatSystem::UpdateBoss(
+    float deltaTime,
+    Player& player,
+    Boss& boss
+)
+{
+    cameraShakeRequested = false;
+
+    boss.Update(
+        deltaTime,
+        player
+    );
+
+    HandlePlayerAttackBoss(
+        player,
+        boss
+    );
+
+    if (boss.ConsumeAttackHitRequest())
+    {
+        cameraShakeRequested = true;
+    }
 }
 
 void CombatSystem::HandlePlayerAttack(
@@ -114,8 +139,104 @@ void CombatSystem::HandlePlayerAttack(
                     playerKnockbackForce
                 );
 
-                cameraShakeRequested =
-                    true;
+                cameraShakeRequested = true;
+            }
+        }
+    }
+
+    playerAttackWasActive =
+        playerAttackIsActive;
+}
+
+void CombatSystem::HandlePlayerAttackBoss(
+    Player& player,
+    Boss& boss
+)
+{
+    const bool playerAttackIsActive =
+        player.IsAttacking();
+
+    if (
+        playerAttackIsActive &&
+        !playerAttackWasActive &&
+        boss.IsAlive()
+        )
+    {
+        const Vector3 playerPosition =
+            player.GetPosition();
+
+        const Vector3 bossPosition =
+            boss.GetPosition();
+
+        Vector3 playerToBoss =
+            Vector3Subtract(
+                bossPosition,
+                playerPosition
+            );
+
+        // Boss uzun olduğu için yalnızca yatay mesafeyi
+        // hesaba katıyoruz.
+        playerToBoss.y = 0.0f;
+
+        const float distanceToBoss =
+            Vector3Length(
+                playerToBoss
+            );
+
+        if (
+            distanceToBoss <=
+            playerAttackRange + 1.2f
+            )
+        {
+            Vector3 directionToBoss{
+                0.0f,
+                0.0f,
+                0.0f
+            };
+
+            if (distanceToBoss > 0.001f)
+            {
+                directionToBoss =
+                    Vector3Normalize(
+                        playerToBoss
+                    );
+            }
+
+            Vector3 playerFacingDirection =
+                player.GetFacingDirection();
+
+            playerFacingDirection.y = 0.0f;
+
+            if (
+                Vector3Length(
+                    playerFacingDirection
+                ) > 0.001f
+                )
+            {
+                playerFacingDirection =
+                    Vector3Normalize(
+                        playerFacingDirection
+                    );
+            }
+
+            const float facingAmount =
+                Vector3DotProduct(
+                    playerFacingDirection,
+                    directionToBoss
+                );
+
+            if (facingAmount > 0.25f)
+            {
+                boss.TakeDamage(
+                    playerAttackDamage
+                );
+
+                boss.ApplyKnockback(
+                    directionToBoss,
+                    playerKnockbackForce
+                );
+
+                cameraShakeRequested = true;
             }
         }
     }
@@ -152,13 +273,11 @@ void CombatSystem::HandleEnemyAttacks(
 
         if (cooldownTimer > 0.0f)
         {
-            cooldownTimer -=
-                deltaTime;
+            cooldownTimer -= deltaTime;
 
             if (cooldownTimer < 0.0f)
             {
-                cooldownTimer =
-                    0.0f;
+                cooldownTimer = 0.0f;
             }
         }
     }
@@ -200,10 +319,8 @@ void CombatSystem::HandleEnemyAttacks(
             );
 
         if (
-            distanceToPlayer <=
-            enemyAttackRange &&
-            enemyAttackCooldownTimers[index] <=
-            0.0f
+            distanceToPlayer <= enemyAttackRange &&
+            enemyAttackCooldownTimers[index] <= 0.0f
             )
         {
             player.TakeDamage(
@@ -213,8 +330,7 @@ void CombatSystem::HandleEnemyAttacks(
             enemyAttackCooldownTimers[index] =
                 enemyAttackCooldown;
 
-            cameraShakeRequested =
-                true;
+            cameraShakeRequested = true;
 
             if (!player.IsAlive())
             {
@@ -231,8 +347,7 @@ bool CombatSystem::ConsumeCameraShakeRequest()
         return false;
     }
 
-    cameraShakeRequested =
-        false;
+    cameraShakeRequested = false;
 
     return true;
 }
@@ -246,8 +361,7 @@ void CombatSystem::IncreasePlayerAttackDamage(
         return;
     }
 
-    playerAttackDamage +=
-        amount;
+    playerAttackDamage += amount;
 }
 
 float CombatSystem::GetPlayerAttackDamage() const

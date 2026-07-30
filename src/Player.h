@@ -18,17 +18,21 @@ public:
     bool IsAttacking() const;
     float GetAttackProgress() const;
 
-    // ==========================
-    // HEALTH
-    // ==========================
     void TakeDamage(int damage);
-
     int GetHealth() const;
     int GetMaxHealth() const;
-
     void Heal(int amount);
-
     bool IsAlive() const;
+
+    void IncreaseMaxHealth(int amount);
+    void IncreaseArmor(float amount);
+    void IncreaseMovementSpeed(float walkAmount, float runAmount);
+    void ReduceDashCooldown(float amount);
+
+    float GetArmor() const;
+    float GetWalkSpeed() const;
+    float GetRunSpeed() const;
+    float GetDashCooldown() const;
 
 private:
     Vector3 position;
@@ -48,9 +52,7 @@ private:
 
     Weapon weapon;
 
-    // ==========================
-    // PLAYER HEALTH
-    // ==========================
     int health;
     int maxHealth;
+    float armor;
 };
