@@ -18,6 +18,7 @@
 #include "ScoreManager.h"
 #include "Shop.h"
 #include "UI.h"
+#include "WorldEnvironment.h"
 
 enum class ApplicationScreen
 {
@@ -526,6 +527,8 @@ int main()
 
     Shop shop;
 
+    WorldEnvironment worldEnvironment;
+
     // Boss gövde merkezi yerden yüksekte olmalıdır.
     Boss boss(
         Vector3{ 0.0f, 3.3f, -10.0f }
@@ -600,6 +603,7 @@ int main()
             GetFrameTime();
 
         menuAnimationTime += deltaTime;
+        worldEnvironment.Update(deltaTime);
 
         if (
             applicationScreen ==
@@ -1372,29 +1376,20 @@ int main()
         BeginDrawing();
 
         ClearBackground(
-            SKYBLUE
+            currentLevel == 1
+            ? Color{ 9, 13, 23, 255 }
+            : bossFightActive
+            ? Color{ 24, 7, 18, 255 }
+            : Color{ 17, 10, 27, 255 }
         );
 
         BeginMode3D(
             camera
         );
 
-        DrawPlane(
-            Vector3{
-                0.0f,
-                0.0f,
-                0.0f
-            },
-            Vector2{
-                50.0f,
-                50.0f
-            },
-            DARKGREEN
-        );
-
-        DrawGrid(
-            50,
-            1.0f
+        worldEnvironment.Draw(
+            currentLevel,
+            bossFightActive
         );
 
         player.Draw();

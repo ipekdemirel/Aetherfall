@@ -75,6 +75,9 @@ add_executable(Aetherfall
 
     src/AetherAltar.cpp
     src/AetherAltar.h
+
+    src/WorldEnvironment.h
+    src/WorldEnvironment.cpp
 )
 
 target_include_directories(Aetherfall

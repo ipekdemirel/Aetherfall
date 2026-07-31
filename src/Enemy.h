@@ -55,6 +55,9 @@ private:
 
     float hitFlashTimer;
     float hitFlashDuration;
+    float visualTime;
+    float deathEffectTimer;
+    float deathEffectDuration;
 
     // ==========================
     // DETECTION SYSTEM

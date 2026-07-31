@@ -108,6 +108,12 @@ void EnemyManager::Update(
 
         if (!currentEnemy.IsAlive())
         {
+            currentEnemy.Update(
+                deltaTime,
+                playerPosition,
+                Vector3{ 0.0f, 0.0f, 0.0f }
+            );
+
             continue;
         }
 
