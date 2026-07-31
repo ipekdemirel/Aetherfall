@@ -35,6 +35,8 @@ public:
     float GetDashCooldown() const;
 
 private:
+    void UpdateModelAnimation(float deltaTime);
+
     Vector3 position;
     Vector3 facingDirection;
 
@@ -49,6 +51,12 @@ private:
     float dashCooldownTimer;
 
     bool isDashing;
+    bool isMoving;
+    bool isRunning;
+
+    float effectTime;
+    float modelAnimationFrame;
+    int currentModelAnimation;
 
     Weapon weapon;
 
