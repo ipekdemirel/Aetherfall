@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 
+#include "AetherAltar.h"
 #include "AetherCore.h"
 #include "Boss.h"
 #include "BossHUD.h"
@@ -484,24 +485,26 @@ int main()
 
     Player player;
 
+    std::vector<AetherAltar> altars;
     std::vector<KeyItem> keys;
 
     // =====================================================
-    // LEVEL 1 KEYS
+    // LEVEL 1 AETHER ALTARS
     // =====================================================
 
-    keys.emplace_back(
-        Vector3{ -8.0f, 0.5f, -8.0f }
+    altars.emplace_back(
+        Vector3{ -10.0f, 0.5f, -8.0f }
     );
 
-    keys.emplace_back(
-        Vector3{ 8.0f, 0.5f, -5.0f }
+    altars.emplace_back(
+        Vector3{ 10.0f, 0.5f, -6.0f }
     );
 
-    keys.emplace_back(
-        Vector3{ 0.0f, 0.5f, 8.0f }
+    altars.emplace_back(
+        Vector3{ 0.0f, 0.5f, 10.0f }
     );
 
+    const int totalAltars = 3;
     const int totalKeys = 3;
 
     // =====================================================
@@ -576,6 +579,7 @@ int main()
     const float cameraShakeStrength = 0.18f;
 
     int collectedKeys = 0;
+    int activatedAltars = 0;
     int coinCount = 0;
 
     ApplicationScreen applicationScreen =
@@ -867,20 +871,21 @@ int main()
                 "LEFT SHIFT    Run",
                 "SPACE         Dash",
                 "LEFT MOUSE    Attack",
+                "E (HOLD)      Activate Altar",
                 "B             Open / Close Shop",
                 "ESC / ENTER   Return to Menu"
             };
 
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 7; i++)
             {
                 DrawText(
                     controlLines[i],
                     width / 2 - 190,
                     height / 2 -
                     110 +
-                    i * 50,
-                    23,
-                    i == 5
+                    i * 43,
+                    21,
+                    i == 6
                     ? GRAY
                     : RAYWHITE
                 );
@@ -924,31 +929,33 @@ int main()
 
             aetherCore.Reset();
 
-            keys.clear();
+            altars.clear();
 
-            keys.emplace_back(
+            altars.emplace_back(
                 Vector3{
-                    -8.0f,
+                    -10.0f,
                     0.5f,
                     -8.0f
                 }
             );
 
-            keys.emplace_back(
+            altars.emplace_back(
                 Vector3{
-                    8.0f,
+                    10.0f,
                     0.5f,
-                    -5.0f
+                    -6.0f
                 }
             );
 
-            keys.emplace_back(
+            altars.emplace_back(
                 Vector3{
                     0.0f,
                     0.5f,
-                    8.0f
+                    10.0f
                 }
             );
+
+            keys.clear();
 
             exitDoor =
                 ExitDoor(
@@ -960,6 +967,7 @@ int main()
                 );
 
             collectedKeys = 0;
+            activatedAltars = 0;
 
             enemyManager.Reset();
 
@@ -1004,6 +1012,8 @@ int main()
 
             player = Player();
 
+            altars.clear();
+
             keys.clear();
 
             keys.emplace_back(
@@ -1040,6 +1050,7 @@ int main()
                 );
 
             collectedKeys = 0;
+            activatedAltars = 0;
 
             enemyManager.Reset();
 
@@ -1159,33 +1170,70 @@ int main()
                 );
 
             // =================================================
-            // KEYS AND EXIT DOOR
+            // LEVEL OBJECTIVE AND EXIT DOOR
             // =================================================
 
             if (!bossFightActive)
             {
-                for (auto& key : keys)
+                if (currentLevel == 1)
                 {
-                    key.Update(
-                        deltaTime,
-                        player.GetPosition()
+                    for (auto& altar : altars)
+                    {
+                        const bool altarCompleted =
+                            altar.Update(
+                                deltaTime,
+                                player.GetPosition(),
+                                !shop.IsOpen() &&
+                                IsKeyDown(KEY_E)
+                            );
+
+                        if (altarCompleted)
+                        {
+                            scoreManager.AddScore(500);
+                            cameraShakeTime = 0.18f;
+                        }
+                    }
+
+                    activatedAltars = 0;
+
+                    for (const auto& altar : altars)
+                    {
+                        if (altar.IsActivated())
+                        {
+                            activatedAltars++;
+                        }
+                    }
+
+                    exitDoor.Update(
+                        player.GetPosition(),
+                        activatedAltars == totalAltars
                     );
                 }
-
-                collectedKeys = 0;
-
-                for (const auto& key : keys)
+                else
                 {
-                    if (key.IsCollected())
+                    for (auto& key : keys)
                     {
-                        collectedKeys++;
+                        key.Update(
+                            deltaTime,
+                            player.GetPosition()
+                        );
                     }
-                }
 
-                exitDoor.Update(
-                    player.GetPosition(),
-                    collectedKeys == totalKeys
-                );
+                    collectedKeys = 0;
+
+                    for (const auto& key : keys)
+                    {
+                        if (key.IsCollected())
+                        {
+                            collectedKeys++;
+                        }
+                    }
+
+                    exitDoor.Update(
+                        player.GetPosition(),
+                        collectedKeys == totalKeys
+                    );
+                }
 
                 if (exitDoor.PlayerReachedDoor())
                 {
@@ -1360,9 +1408,19 @@ int main()
         {
             enemyManager.Draw();
 
-            for (const auto& key : keys)
+            if (currentLevel == 1)
             {
-                key.Draw();
+                for (const auto& altar : altars)
+                {
+                    altar.Draw();
+                }
+            }
+            else
+            {
+                for (const auto& key : keys)
+                {
+                    key.Draw();
+                }
             }
 
             exitDoor.Draw();
@@ -1388,9 +1446,34 @@ int main()
 
         UI::DrawHUD(
             player,
-            collectedKeys,
-            totalKeys
+            currentLevel == 1
+            ? "Altars"
+            : "Keys",
+            currentLevel == 1
+            ? activatedAltars
+            : collectedKeys,
+            currentLevel == 1
+            ? totalAltars
+            : totalKeys
         );
+
+        if (
+            currentLevel == 1 &&
+            gameState == GameState::Playing &&
+            !shop.IsOpen()
+            )
+        {
+            for (const auto& altar : altars)
+            {
+                if (altar.IsPlayerInRange())
+                {
+                    UI::DrawAltarInteraction(
+                        altar.GetActivationProgress()
+                    );
+                    break;
+                }
+            }
+        }
 
         UI::DrawScore(
             scoreManager.GetScore()
@@ -1472,6 +1555,31 @@ int main()
             20,
             levelFontSize,
             WHITE
+        );
+
+        const char* missionText =
+            currentLevel == 1
+            ? activatedAltars == totalAltars
+            ? "THE GATE IS OPEN - REACH THE EXIT"
+            : "AWAKEN THE RUINS - ACTIVATE 3 ALTARS"
+            : bossFightActive
+            ? "DEFEAT THE AETHER TITAN"
+            : "FIND THE SIGILS AND OPEN THE GATE";
+
+        const int missionFontSize = 18;
+
+        DrawText(
+            missionText,
+            GetScreenWidth() / 2 -
+            MeasureText(
+                missionText,
+                missionFontSize
+            ) / 2,
+            52,
+            missionFontSize,
+            currentLevel == 1
+            ? SKYBLUE
+            : GOLD
         );
 
         // =====================================================

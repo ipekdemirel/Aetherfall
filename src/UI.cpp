@@ -10,8 +10,9 @@ namespace UI
 {
     void DrawHUD(
         const Player& player,
-        int collectedKeys,
-        int totalKeys
+        const char* objectiveName,
+        int objectiveProgress,
+        int objectiveTotal
     )
     {
         DrawText(
@@ -119,24 +120,122 @@ namespace UI
         );
 
         // =====================================================
-        // KEYS
+        // CURRENT LEVEL OBJECTIVE
         // =====================================================
 
         DrawText(
             TextFormat(
-                "Keys : %d / %d",
-                collectedKeys,
-                totalKeys
+                "%s: %d / %d",
+                objectiveName,
+                objectiveProgress,
+                objectiveTotal
             ),
             20,
             290,
             24,
-            GOLD
+            SKYBLUE
         );
 
         DrawFPS(
             GetScreenWidth() - 100,
             20
+        );
+    }
+
+    void DrawAltarInteraction(
+        float activationProgress
+    )
+    {
+        if (activationProgress < 0.0f)
+        {
+            activationProgress = 0.0f;
+        }
+
+        if (activationProgress > 1.0f)
+        {
+            activationProgress = 1.0f;
+        }
+
+        const int panelWidth = 440;
+        const int panelHeight = 92;
+        const int panelX =
+            GetScreenWidth() / 2 -
+            panelWidth / 2;
+        const int panelY =
+            GetScreenHeight() -
+            panelHeight -
+            30;
+
+        DrawRectangleRounded(
+            Rectangle{
+                static_cast<float>(panelX),
+                static_cast<float>(panelY),
+                static_cast<float>(panelWidth),
+                static_cast<float>(panelHeight)
+            },
+            0.16f,
+            8,
+            Color{ 6, 13, 24, 225 }
+        );
+
+        DrawRectangleRoundedLinesEx(
+            Rectangle{
+                static_cast<float>(panelX),
+                static_cast<float>(panelY),
+                static_cast<float>(panelWidth),
+                static_cast<float>(panelHeight)
+            },
+            0.16f,
+            8,
+            2.0f,
+            Color{ 92, 226, 255, 255 }
+        );
+
+        const char* interactionText =
+            activationProgress > 0.0f
+            ? "HOLD E - CHANNEL AETHER"
+            : "HOLD E - ACTIVATE ALTAR";
+
+        const int textWidth =
+            MeasureText(
+                interactionText,
+                22
+            );
+
+        DrawText(
+            interactionText,
+            GetScreenWidth() / 2 -
+            textWidth / 2,
+            panelY + 15,
+            22,
+            RAYWHITE
+        );
+
+        DrawRectangle(
+            panelX + 24,
+            panelY + 53,
+            panelWidth - 48,
+            16,
+            Color{ 31, 38, 54, 255 }
+        );
+
+        DrawRectangle(
+            panelX + 24,
+            panelY + 53,
+            static_cast<int>(
+                (panelWidth - 48) *
+                activationProgress
+                ),
+            16,
+            Color{ 92, 226, 255, 255 }
+        );
+
+        DrawRectangleLines(
+            panelX + 24,
+            panelY + 53,
+            panelWidth - 48,
+            16,
+            Color{ 142, 244, 255, 255 }
         );
     }
 

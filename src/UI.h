@@ -10,8 +10,13 @@ namespace UI
 {
     void DrawHUD(
         const Player& player,
-        int collectedKeys,
-        int totalKeys
+        const char* objectiveName,
+        int objectiveProgress,
+        int objectiveTotal
+    );
+
+    void DrawAltarInteraction(
+        float activationProgress
     );
 
     void DrawEnemyHealthBar(
