@@ -10,7 +10,10 @@ EnemyManager::EnemyManager()
     extraEnemiesPerWave(2),
     nextWaveDelay(3.0f),
     nextWaveTimer(0.0f),
-    waitingForNextWave(false)
+    waitingForNextWave(false),
+    defenseMode(false),
+    defenseComplete(false),
+    totalWaves(0)
 {
 }
 
@@ -18,9 +21,15 @@ void EnemyManager::Initialize()
 {
     currentWave = 1;
 
+    nextWaveDelay = 3.0f;
+
     waitingForNextWave = false;
 
     nextWaveTimer = 0.0f;
+
+    defenseMode = false;
+    defenseComplete = false;
+    totalWaves = 0;
 
     SpawnCurrentWave();
 }
@@ -30,14 +39,39 @@ void EnemyManager::Reset()
     Initialize();
 }
 
+void EnemyManager::StartDefense(int waveCount)
+{
+    currentWave = 1;
+    waitingForNextWave = false;
+    nextWaveTimer = 0.0f;
+
+    // Level 2 gives the player enough time to collect coins, reposition and
+    // read the next-wave warning before another group arrives.
+    nextWaveDelay = 6.0f;
+
+    defenseMode = true;
+    defenseComplete = false;
+    totalWaves =
+        waveCount > 0
+        ? waveCount
+        : 1;
+
+    SpawnCurrentWave();
+}
+
 void EnemyManager::SpawnCurrentWave()
 {
     enemies.clear();
 
+    // Normal levels keep the original 5, 7, 9... progression. The defense
+    // mission uses a fairer 4, 5, 6 progression because the player must also
+    // protect the core while fighting.
     const int enemyCount =
-        startingEnemyCount +
-        (currentWave - 1) *
-        extraEnemiesPerWave;
+        defenseMode
+        ? 4 + (currentWave - 1)
+        : startingEnemyCount +
+            (currentWave - 1) *
+            extraEnemiesPerWave;
 
     const float radius =
         12.0f;
@@ -84,7 +118,41 @@ bool EnemyManager::AreAllEnemiesDefeated() const
 
 void EnemyManager::Update(
     float deltaTime,
-    const Vector3& playerPosition
+    const Vector3& targetPosition,
+    bool forceChaseTarget
+)
+{
+    UpdateEnemies(
+        deltaTime,
+        targetPosition,
+        forceChaseTarget,
+        nullptr
+    );
+
+    UpdateWaveSystem(deltaTime);
+}
+
+void EnemyManager::UpdateDefense(
+    float deltaTime,
+    const Vector3& playerPosition,
+    const Vector3& corePosition
+)
+{
+    UpdateEnemies(
+        deltaTime,
+        corePosition,
+        true,
+        &playerPosition
+    );
+
+    UpdateWaveSystem(deltaTime);
+}
+
+void EnemyManager::UpdateEnemies(
+    float deltaTime,
+    const Vector3& targetPosition,
+    bool forceChaseTarget,
+    const Vector3* defensePlayerPosition
 )
 {
     // =====================================================
@@ -110,8 +178,9 @@ void EnemyManager::Update(
         {
             currentEnemy.Update(
                 deltaTime,
-                playerPosition,
-                Vector3{ 0.0f, 0.0f, 0.0f }
+                targetPosition,
+                Vector3{ 0.0f, 0.0f, 0.0f },
+                forceChaseTarget
             );
 
             continue;
@@ -126,6 +195,52 @@ void EnemyManager::Update(
 
         const Vector3 currentPosition =
             currentEnemy.GetPosition();
+
+        Vector3 selectedTarget =
+            targetPosition;
+
+        bool selectedForceChase =
+            forceChaseTarget;
+
+        if (defensePlayerPosition != nullptr)
+        {
+            // Savunma bolumunde yalnizca her uc dusmandan biri cekirdege gider.
+            // Diger dusmanlar oyuncuyla savasir. Boylece cekirdek arkada kendi
+            // kendine erimez ve oyuncu normal savasina devam edebilir.
+            const bool isCoreAttacker =
+                i % 3 == 0;
+
+            if (!isCoreAttacker)
+            {
+                selectedTarget =
+                    *defensePlayerPosition;
+
+                selectedForceChase = true;
+            }
+
+            // Cekirdek saldirganlarina cekirdegin cevresinde ayri yuvalar ver.
+            // Boylece ayni koordinatin ustunde yigilmadan kusatirlar.
+            const float slotAngle =
+                static_cast<float>(i) * 2.39996323f;
+
+            const float slotRadius =
+                1.75f +
+                static_cast<float>(i % 2) * 0.28f;
+
+            if (isCoreAttacker)
+            {
+                selectedTarget =
+                {
+                    targetPosition.x +
+                        cosf(slotAngle) * slotRadius,
+                    targetPosition.y,
+                    targetPosition.z +
+                        sinf(slotAngle) * slotRadius
+                };
+
+                selectedForceChase = true;
+            }
+        }
 
         for (
             std::size_t j = 0;
@@ -193,11 +308,15 @@ void EnemyManager::Update(
 
         currentEnemy.Update(
             deltaTime,
-            playerPosition,
-            separationForce
+            selectedTarget,
+            separationForce,
+            selectedForceChase
         );
     }
+}
 
+void EnemyManager::UpdateWaveSystem(float deltaTime)
+{
     // =====================================================
     // WAVE SYSTEM
     // =====================================================
@@ -206,6 +325,15 @@ void EnemyManager::Update(
     {
         if (AreAllEnemiesDefeated())
         {
+            if (
+                defenseMode &&
+                currentWave >= totalWaves
+                )
+            {
+                defenseComplete = true;
+                return;
+            }
+
             waitingForNextWave = true;
 
             nextWaveTimer =
@@ -282,4 +410,15 @@ bool EnemyManager::IsWaitingForNextWave() const
 float EnemyManager::GetNextWaveTimer() const
 {
     return nextWaveTimer;
+}
+
+int EnemyManager::GetTotalWaves() const
+{
+    return totalWaves;
+}
+
+bool EnemyManager::IsDefenseComplete() const
+{
+    return defenseMode &&
+        defenseComplete;
 }

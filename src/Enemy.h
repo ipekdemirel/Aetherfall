@@ -10,7 +10,8 @@ public:
     void Update(
         float deltaTime,
         Vector3 playerPosition,
-        Vector3 separationForce
+        Vector3 separationForce,
+        bool forceChaseTarget = false
     );
 
     void Draw() const;

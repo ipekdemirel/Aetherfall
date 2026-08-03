@@ -2,51 +2,70 @@
 
 #include "Player.h"
 
+#include <cmath>
+
 #include <raymath.h>
+#include <rlgl.h>
+
+namespace
+{
+    constexpr float TITAN_VISUAL_SCALE = 0.60f;
+
+    void DrawTitanLimb(
+        Vector3 start,
+        Vector3 end,
+        float startRadius,
+        float endRadius,
+        Color color
+    )
+    {
+        DrawCylinderEx(
+            start,
+            end,
+            startRadius,
+            endRadius,
+            9,
+            color
+        );
+        DrawSphere(start, startRadius * 1.02f, color);
+        DrawSphere(end, endRadius * 1.05f, color);
+    }
+}
 
 Boss::Boss(Vector3 startPosition)
-    :
-    position(startPosition),
+    : position(startPosition),
     knockbackVelocity{ 0.0f, 0.0f, 0.0f },
-
-    normalMoveSpeed(1.5f),
-    rageMoveSpeed(2.4f),
-
-    health(700.0f),
-    maxHealth(700.0f),
-
-    attackRange(2.4f),
-    attackDamage(30),
-
-    attackCooldown(1.5f),
-    attackCooldownTimer(0.0f),
-
+    facingDirection{ 0.0f, 0.0f, 1.0f },
+    attackTarget(startPosition),
+    normalMoveSpeed(1.65f),
+    rageMoveSpeed(2.65f),
+    health(850.0f),
+    maxHealth(850.0f),
+    attackRange(3.0f),
+    attackDamage(28),
+    attackCooldown(1.45f),
+    attackCooldownTimer(0.45f),
     hitFlashTimer(0.0f),
-    hitFlashDuration(0.20f),
-
+    hitFlashDuration(0.18f),
+    animationTime(0.0f),
     alive(true),
     rageModeActive(false),
-
     attackHitRequested(false),
-
     currentAttack(AttackType::None),
     attackWindupTimer(0.0f),
-
-    meleeWindupDuration(0.70f),
-    rageMeleeWindupDuration(0.45f),
-
+    meleeWindupDuration(0.72f),
+    rageMeleeWindupDuration(0.46f),
+    meteorWindupDuration(1.35f),
+    meteorRange(2.5f),
+    meteorDamage(24),
     rageSlamWindupDuration(1.15f),
-    rageSlamRange(5.5f),
+    rageSlamRange(6.0f),
     rageSlamDamage(40),
-
     attacksSinceLastSlam(0)
 {
 }
 
-void Boss::Update(
-    float deltaTime,
-    Player& player
-)
+void Boss::Update(float deltaTime, Player& player)
 {
     attackHitRequested = false;
 
@@ -55,123 +74,72 @@ void Boss::Update(
         return;
     }
 
+    animationTime += deltaTime;
     UpdateHitFlash(deltaTime);
-
     UpdateKnockback(deltaTime);
 
-    rageModeActive =
-        health <= maxHealth * 0.5f;
+    rageModeActive = health <= maxHealth * 0.5f;
 
-    UpdateMovement(
-        deltaTime,
-        player.GetPosition()
-    );
-
-    UpdateAttack(
-        deltaTime,
-        player
-    );
+    UpdateMovement(deltaTime, player.GetPosition());
+    UpdateAttack(deltaTime, player);
 }
 
 void Boss::UpdateHitFlash(float deltaTime)
 {
-    if (hitFlashTimer <= 0.0f)
+    if (hitFlashTimer > 0.0f)
     {
-        return;
-    }
+        hitFlashTimer -= deltaTime;
 
-    hitFlashTimer -= deltaTime;
-
-    if (hitFlashTimer < 0.0f)
-    {
-        hitFlashTimer = 0.0f;
+        if (hitFlashTimer < 0.0f)
+        {
+            hitFlashTimer = 0.0f;
+        }
     }
 }
 
 void Boss::UpdateKnockback(float deltaTime)
 {
-    position.x +=
-        knockbackVelocity.x * deltaTime;
+    position.x += knockbackVelocity.x * deltaTime;
+    position.z += knockbackVelocity.z * deltaTime;
 
-    position.z +=
-        knockbackVelocity.z * deltaTime;
+    knockbackVelocity = Vector3Scale(knockbackVelocity, 0.88f);
 
-    knockbackVelocity =
-        Vector3Scale(
-            knockbackVelocity,
-            0.88f
-        );
-
-    if (
-        Vector3Length(knockbackVelocity) <
-        0.05f
-        )
+    if (Vector3Length(knockbackVelocity) < 0.05f)
     {
-        knockbackVelocity = {
-            0.0f,
-            0.0f,
-            0.0f
-        };
+        knockbackVelocity = Vector3{ 0.0f, 0.0f, 0.0f };
     }
 }
 
-void Boss::UpdateMovement(
-    float deltaTime,
-    Vector3 playerPosition
-)
+void Boss::UpdateMovement(float deltaTime, Vector3 playerPosition)
 {
-    // Boss bir saldırı hazırlıyorsa hareket etmez.
-    // Böylece oyuncu saldırıdan kaçma fırsatı bulur.
+    Vector3 toPlayer = Vector3Subtract(playerPosition, position);
+    toPlayer.y = 0.0f;
 
-    if (currentAttack != AttackType::None)
+    const float distance = Vector3Length(toPlayer);
+
+    if (distance > 0.001f)
     {
-        return;
+        facingDirection = Vector3Normalize(toPlayer);
     }
 
-    Vector3 bossToPlayer =
-        Vector3Subtract(
-            playerPosition,
-            position
-        );
-
-    bossToPlayer.y = 0.0f;
-
-    const float distanceToPlayer =
-        Vector3Length(bossToPlayer);
-
     if (
-        distanceToPlayer <= attackRange ||
-        distanceToPlayer <= 0.001f
+        currentAttack != AttackType::None ||
+        distance <= attackRange ||
+        distance <= 0.001f
         )
     {
         return;
     }
 
-    const Vector3 movementDirection =
-        Vector3Normalize(
-            bossToPlayer
-        );
-
-    const float currentMoveSpeed =
-        rageModeActive
+    const float speed = rageModeActive
         ? rageMoveSpeed
         : normalMoveSpeed;
 
-    position.x +=
-        movementDirection.x *
-        currentMoveSpeed *
-        deltaTime;
-
-    position.z +=
-        movementDirection.z *
-        currentMoveSpeed *
-        deltaTime;
+    position.x += facingDirection.x * speed * deltaTime;
+    position.z += facingDirection.z * speed * deltaTime;
 }
 
-void Boss::UpdateAttack(
-    float deltaTime,
-    Player& player
-)
+void Boss::UpdateAttack(float deltaTime, Player& player)
 {
     if (attackCooldownTimer > 0.0f)
     {
@@ -185,16 +153,10 @@ void Boss::UpdateAttack(
 
     if (!player.IsAlive())
     {
-        currentAttack =
-            AttackType::None;
-
+        currentAttack = AttackType::None;
         attackWindupTimer = 0.0f;
-
         return;
     }
-
-    // Boss şu anda saldırı hazırlıyorsa
-    // hazırlık süresini azalt.
 
     if (currentAttack != AttackType::None)
     {
@@ -211,19 +173,19 @@ void Boss::UpdateAttack(
         {
             ResolveMeleeAttack(player);
         }
+        else if (currentAttack == AttackType::MeteorStrike)
+        {
+            ResolveMeteorStrike(player);
+        }
         else if (currentAttack == AttackType::RageSlam)
         {
             ResolveRageSlamAttack(player);
         }
 
-        currentAttack =
-            AttackType::None;
-
-        attackCooldownTimer =
-            rageModeActive
-            ? attackCooldown * 0.70f
+        currentAttack = AttackType::None;
+        attackCooldownTimer = rageModeActive
+            ? attackCooldown * 0.68f
             : attackCooldown;
-
         return;
     }
 
@@ -232,78 +194,74 @@ void Boss::UpdateAttack(
         return;
     }
 
-    Vector3 bossToPlayer =
-        Vector3Subtract(
-            player.GetPosition(),
-            position
-        );
-
-    bossToPlayer.y = 0.0f;
-
-    const float distanceToPlayer =
-        Vector3Length(bossToPlayer);
-
-    // Rage modunda Boss her iki yakın saldırıdan
-    // sonra bir alan saldırısı hazırlayabilir.
+    Vector3 toPlayer = Vector3Subtract(player.GetPosition(), position);
+    toPlayer.y = 0.0f;
+    const float distance = Vector3Length(toPlayer);
 
     if (
         rageModeActive &&
         attacksSinceLastSlam >= 2 &&
-        distanceToPlayer <= rageSlamRange
+        distance <= rageSlamRange
         )
     {
         StartRageSlamAttack();
-        return;
     }
-
-    if (distanceToPlayer <= attackRange)
+    else if (distance <= attackRange)
     {
         StartMeleeAttack();
+    }
+    else
+    {
+        StartMeteorStrike(player.GetPosition());
     }
 }
 
 void Boss::StartMeleeAttack()
 {
-    currentAttack =
-        AttackType::Melee;
-
-    attackWindupTimer =
-        rageModeActive
+    currentAttack = AttackType::Melee;
+    attackWindupTimer = rageModeActive
         ? rageMeleeWindupDuration
         : meleeWindupDuration;
 }
 
+void Boss::StartMeteorStrike(Vector3 playerPosition)
+{
+    currentAttack = AttackType::MeteorStrike;
+    attackTarget = playerPosition;
+    attackTarget.y = 0.0f;
+    attackWindupTimer = rageModeActive
+        ? meteorWindupDuration * 0.78f
+        : meteorWindupDuration;
+}
+
 void Boss::StartRageSlamAttack()
 {
-    currentAttack =
-        AttackType::RageSlam;
-
-    attackWindupTimer =
-        rageSlamWindupDuration;
+    currentAttack = AttackType::RageSlam;
+    attackWindupTimer = rageSlamWindupDuration;
 }
 
 void Boss::ResolveMeleeAttack(Player& player)
 {
-    Vector3 bossToPlayer =
-        Vector3Subtract(
-            player.GetPosition(),
-            position
-        );
+    Vector3 toPlayer = Vector3Subtract(player.GetPosition(), position);
+    toPlayer.y = 0.0f;
 
-    bossToPlayer.y = 0.0f;
-
-    const float distanceToPlayer =
-        Vector3Length(bossToPlayer);
-
-    // Oyuncu uyarıyı görüp menzilden çıktıysa
-    // saldırı boşa gider.
-
-    if (distanceToPlayer <= attackRange)
+    if (Vector3Length(toPlayer) <= attackRange)
     {
-        player.TakeDamage(
-            attackDamage
-        );
+        player.TakeDamage(attackDamage);
+        attackHitRequested = true;
+    }
 
+    attacksSinceLastSlam++;
+}
+
+void Boss::ResolveMeteorStrike(Player& player)
+{
+    Vector3 toTarget = Vector3Subtract(player.GetPosition(), attackTarget);
+    toTarget.y = 0.0f;
+
+    if (Vector3Length(toTarget) <= meteorRange)
+    {
+        player.TakeDamage(meteorDamage);
         attackHitRequested = true;
     }
 
@@ -312,26 +270,12 @@ void Boss::ResolveMeleeAttack(Player& player)
 
 void Boss::ResolveRageSlamAttack(Player& player)
 {
-    Vector3 bossToPlayer =
-        Vector3Subtract(
-            player.GetPosition(),
-            position
-        );
+    Vector3 toPlayer = Vector3Subtract(player.GetPosition(), position);
+    toPlayer.y = 0.0f;
 
-    bossToPlayer.y = 0.0f;
-
-    const float distanceToPlayer =
-        Vector3Length(bossToPlayer);
-
-    // Oyuncu kırmızı alanın dışına çıkarsa
-    // alan saldırısından hasar almaz.
-
-    if (distanceToPlayer <= rageSlamRange)
+    if (Vector3Length(toPlayer) <= rageSlamRange)
     {
-        player.TakeDamage(
-            rageSlamDamage
-        );
-
+        player.TakeDamage(rageSlamDamage);
         attackHitRequested = true;
     }
 
@@ -345,32 +289,70 @@ void Boss::DrawAttackWarning() const
         return;
     }
 
-    const Vector3 warningPosition{
-        position.x,
-        position.y - 2.25f,
-        position.z
-    };
+    if (currentAttack == AttackType::MeteorStrike)
+    {
+        const float progress = 1.0f -
+            Clamp(
+                attackWindupTimer / meteorWindupDuration,
+                0.0f,
+                1.0f
+            );
 
-    if (currentAttack == AttackType::Melee)
-    {
         DrawCircle3D(
-            warningPosition,
-            attackRange,
+            Vector3{ attackTarget.x, 0.04f, attackTarget.z },
+            meteorRange,
             Vector3{ 1.0f, 0.0f, 0.0f },
             90.0f,
-            Fade(ORANGE, 0.55f)
+            Fade(RED, 0.28f + progress * 0.30f)
         );
-    }
-    else if (currentAttack == AttackType::RageSlam)
-    {
+
         DrawCircle3D(
-            warningPosition,
-            rageSlamRange,
+            Vector3{ attackTarget.x, 0.05f, attackTarget.z },
+            meteorRange * (1.0f - progress * 0.72f),
             Vector3{ 1.0f, 0.0f, 0.0f },
             90.0f,
-            Fade(RED, 0.45f)
+            Fade(GOLD, 0.72f)
         );
+
+        const float meteorHeight = 9.5f - progress * 8.7f;
+        const float meteorRadius = 0.34f + progress * 0.12f;
+        const Vector3 meteorPosition{
+            attackTarget.x,
+            meteorHeight,
+            attackTarget.z
+        };
+
+        // The meteor stays small enough to preserve the player's view.
+        // A short fire trail makes its direction readable without a giant orb.
+        DrawSphere(meteorPosition, meteorRadius, Color{ 74, 48, 42, 255 });
+        DrawSphere(
+            Vector3{ meteorPosition.x, meteorPosition.y + 0.42f, meteorPosition.z },
+            meteorRadius * 0.72f,
+            Color{ 255, 92, 22, 220 }
+        );
+        DrawSphere(
+            Vector3{ meteorPosition.x, meteorPosition.y + 0.78f, meteorPosition.z },
+            meteorRadius * 0.42f,
+            Color{ 255, 190, 48, 150 }
+        );
+        return;
     }
+
+    const float range = currentAttack == AttackType::RageSlam
+        ? rageSlamRange
+        : attackRange;
+
+    const Color warningColor = currentAttack == AttackType::RageSlam
+        ? RED
+        : ORANGE;
+
+    DrawCircle3D(
+        Vector3{ position.x, 0.04f, position.z },
+        range,
+        Vector3{ 1.0f, 0.0f, 0.0f },
+        90.0f,
+        Fade(warningColor, 0.48f)
+    );
 }
 
 void Boss::Draw() const
@@ -382,187 +364,129 @@ void Boss::Draw() const
 
     DrawAttackWarning();
 
-    Color bodyColor;
+    const Color stoneColor = hitFlashTimer > 0.0f
+        ? Color{ 255, 236, 178, 255 }
+        : rageModeActive
+        ? Color{ 78, 52, 48, 255 }
+        : Color{ 62, 60, 68, 255 };
 
-    if (hitFlashTimer > 0.0f)
-    {
-        bodyColor =
-            Color{
-                255,
-                255,
-                190,
-                255
-        };
-    }
-    else if (currentAttack == AttackType::RageSlam)
-    {
-        bodyColor =
-            Color{
-                255,
-                70,
-                20,
-                255
-        };
-    }
-    else if (currentAttack == AttackType::Melee)
-    {
-        bodyColor =
-            Color{
-                230,
-                110,
-                25,
-                255
-        };
-    }
-    else if (rageModeActive)
-    {
-        bodyColor =
-            Color{
-                180,
-                20,
-                30,
-                255
-        };
-    }
-    else
-    {
-        bodyColor =
-            Color{
-                95,
-                25,
-                125,
-                255
-        };
-    }
+    const Color darkStone = rageModeActive
+        ? Color{ 48, 30, 29, 255 }
+        : Color{ 38, 38, 46, 255 };
 
-    // Boss ana gövdesi
+    const Color energyColor = rageModeActive
+        ? Color{ 255, 63, 16, 255 }
+        : Color{ 171, 64, 255, 255 };
 
-    DrawCube(
-        position,
-        3.2f,
-        4.5f,
-        3.2f,
-        bodyColor
+    const float walkBob =
+        currentAttack == AttackType::None
+        ? sinf(animationTime * 4.0f) * 0.08f
+        : 0.0f;
+
+    const float facingAngle =
+        atan2f(facingDirection.x, facingDirection.z) * RAD2DEG;
+
+    rlPushMatrix();
+    // The simulation position remains unchanged. Only the rendered Titan is
+    // scaled around a ground-aligned origin so it is imposing but never fills
+    // the entire camera view.
+    rlTranslatef(position.x, position.y - 1.08f + walkBob, position.z);
+    rlRotatef(facingAngle, 0.0f, 1.0f, 0.0f);
+    rlScalef(TITAN_VISUAL_SCALE, TITAN_VISUAL_SCALE, TITAN_VISUAL_SCALE);
+
+    // Broad rock torso and layered armor plates.
+    DrawCube(Vector3{ 0.0f, 0.0f, 0.0f }, 3.5f, 4.1f, 2.5f, darkStone);
+    DrawCube(Vector3{ 0.0f, 0.55f, 0.68f }, 3.0f, 2.2f, 0.55f, stoneColor);
+    DrawSphere(Vector3{ 0.0f, 1.25f, 0.25f }, 1.55f, stoneColor);
+
+    // Glowing Aether heart and cracks.
+    const float corePulse = 0.42f + 0.08f * sinf(animationTime * 5.0f);
+    DrawSphere(Vector3{ 0.0f, 0.75f, 1.38f }, corePulse, energyColor);
+    DrawSphere(Vector3{ 0.0f, 0.75f, 1.38f }, corePulse * 1.8f, Fade(energyColor, 0.16f));
+    DrawCube(Vector3{ 0.0f, -0.05f, 1.34f }, 0.13f, 1.05f, 0.10f, energyColor);
+    DrawCube(Vector3{ -0.46f, 0.25f, 1.34f }, 0.82f, 0.11f, 0.10f, energyColor);
+    DrawCube(Vector3{ 0.46f, 0.25f, 1.34f }, 0.82f, 0.11f, 0.10f, energyColor);
+
+    // Shoulders and heavy arms give the Titan a distinct silhouette.
+    DrawSphere(Vector3{ -2.05f, 1.15f, 0.0f }, 1.05f, stoneColor);
+    DrawSphere(Vector3{  2.05f, 1.15f, 0.0f }, 1.05f, stoneColor);
+
+    const float armLift =
+        currentAttack == AttackType::RageSlam
+        ? 1.25f
+        : currentAttack == AttackType::MeteorStrike
+        ? 0.75f
+        : 0.0f;
+
+    DrawTitanLimb(
+        Vector3{ -2.05f, 0.95f, 0.0f },
+        Vector3{ -2.42f, -1.05f + armLift, 0.28f },
+        0.78f, 0.62f, stoneColor
+    );
+    DrawTitanLimb(
+        Vector3{ 2.05f, 0.95f, 0.0f },
+        Vector3{ 2.42f, -1.05f + armLift, 0.28f },
+        0.78f, 0.62f, stoneColor
     );
 
-    DrawCubeWires(
-        position,
-        3.2f,
-        4.5f,
-        3.2f,
-        BLACK
+    DrawSphere(Vector3{ -2.48f, -1.32f + armLift, 0.40f }, 0.76f, darkStone);
+    DrawSphere(Vector3{  2.48f, -1.32f + armLift, 0.40f }, 0.76f, darkStone);
+
+    // Head, jaw, horns and glowing eyes.
+    DrawCube(Vector3{ 0.0f, 2.65f, 0.08f }, 2.15f, 1.55f, 1.75f, stoneColor);
+    DrawCube(Vector3{ 0.0f, 2.28f, 0.98f }, 1.55f, 0.58f, 0.42f, darkStone);
+
+    DrawCylinderEx(
+        Vector3{ -0.85f, 3.15f, 0.0f },
+        Vector3{ -1.65f, 4.05f, -0.05f },
+        0.30f, 0.03f, 7, darkStone
+    );
+    DrawCylinderEx(
+        Vector3{ 0.85f, 3.15f, 0.0f },
+        Vector3{ 1.65f, 4.05f, -0.05f },
+        0.30f, 0.03f, 7, darkStone
     );
 
-    // Boss başı
+    DrawSphere(Vector3{ -0.48f, 2.82f, 0.98f }, 0.18f, energyColor);
+    DrawSphere(Vector3{  0.48f, 2.82f, 0.98f }, 0.18f, energyColor);
 
-    const Vector3 headPosition{
-        position.x,
-        position.y + 2.8f,
-        position.z
-    };
-
-    DrawCube(
-        headPosition,
-        2.5f,
-        1.5f,
-        2.5f,
-        bodyColor
+    // Split stone legs and wide feet.
+    DrawTitanLimb(
+        Vector3{ -0.95f, -1.85f, 0.0f },
+        Vector3{ -1.02f, -3.15f, 0.12f },
+        0.76f, 0.62f, darkStone
     );
-
-    DrawCubeWires(
-        headPosition,
-        2.5f,
-        1.5f,
-        2.5f,
-        BLACK
+    DrawTitanLimb(
+        Vector3{ 0.95f, -1.85f, 0.0f },
+        Vector3{ 1.02f, -3.15f, 0.12f },
+        0.76f, 0.62f, darkStone
     );
+    DrawCube(Vector3{ -1.02f, -3.38f, 0.45f }, 1.42f, 0.62f, 1.85f, stoneColor);
+    DrawCube(Vector3{  1.02f, -3.38f, 0.45f }, 1.42f, 0.62f, 1.85f, stoneColor);
 
-    // Sol göz
-
-    DrawSphere(
-        Vector3{
-            headPosition.x - 0.55f,
-            headPosition.y + 0.15f,
-            headPosition.z + 1.28f
-        },
-        0.18f,
-        rageModeActive
-        ? YELLOW
-        : RED
-    );
-
-    // Sağ göz
-
-    DrawSphere(
-        Vector3{
-            headPosition.x + 0.55f,
-            headPosition.y + 0.15f,
-            headPosition.z + 1.28f
-        },
-        0.18f,
-        rageModeActive
-        ? YELLOW
-        : RED
-    );
-
-    // Boss'un ayakları
-
-    DrawCube(
-        Vector3{
-            position.x - 0.9f,
-            position.y - 2.6f,
-            position.z
-        },
-        1.0f,
-        1.4f,
-        1.5f,
-        bodyColor
-    );
-
-    DrawCube(
-        Vector3{
-            position.x + 0.9f,
-            position.y - 2.6f,
-            position.z
-        },
-        1.0f,
-        1.4f,
-        1.5f,
-        bodyColor
-    );
+    rlPopMatrix();
 }
 
 void Boss::TakeDamage(float damage)
 {
-    if (
-        !alive ||
-        damage <= 0.0f
-        )
+    if (!alive || damage <= 0.0f)
     {
         return;
     }
 
     health -= damage;
-
-    hitFlashTimer =
-        hitFlashDuration;
+    hitFlashTimer = hitFlashDuration;
 
     if (health <= 0.0f)
     {
         health = 0.0f;
         alive = false;
-
-        currentAttack =
-            AttackType::None;
-
+        currentAttack = AttackType::None;
         attackWindupTimer = 0.0f;
     }
 }
 
-void Boss::ApplyKnockback(
-    Vector3 direction,
-    float force
-)
+void Boss::ApplyKnockback(Vector3 direction, float force)
 {
     if (
         !alive ||
@@ -573,14 +497,10 @@ void Boss::ApplyKnockback(
         return;
     }
 
-    const float bossKnockbackResistance =
-        0.25f;
-
-    knockbackVelocity =
-        Vector3Scale(
-            Vector3Normalize(direction),
-            force * bossKnockbackResistance
-        );
+    knockbackVelocity = Vector3Scale(
+        Vector3Normalize(direction),
+        force * 0.16f
+    );
 }
 
 bool Boss::IsAlive() const
@@ -616,6 +536,5 @@ bool Boss::ConsumeAttackHitRequest()
     }
 
     attackHitRequested = false;
-
     return true;
 }

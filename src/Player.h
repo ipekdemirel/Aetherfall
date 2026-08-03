@@ -14,6 +14,7 @@ public:
 
     Vector3 GetPosition() const;
     Vector3 GetFacingDirection() const;
+    void SetPosition(Vector3 newPosition);
 
     bool IsAttacking() const;
     float GetAttackProgress() const;

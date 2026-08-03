@@ -1211,20 +1211,9 @@ void Player::Draw() const
                     1.0f
                 );
 
-            const float smoothProgress =
-                attackProgress *
-                attackProgress *
-                (3.0f - 2.0f * attackProgress);
-
-            // GLTF'nin sorunlu kol/kilic kemiklerini ayri ayri
-            // oynatmak yerine butun karakter guvenli bir bicimde
-            // saldiri yonune doner. Modelin kendi tek kilici da
-            // karakterle birlikte hareket eder.
-            yaw +=
-                -58.0f +
-                smoothProgress *
-                116.0f;
-
+            // Saldiri sirasinda yalnizca model animasyonu ve kisa
+            // ileri hamle kullanilir. Karakterin tum govdesi artik
+            // saga-sola dondurulmaz.
             attackLunge =
                 std::sin(
                     attackProgress *
@@ -1428,6 +1417,11 @@ Vector3 Player::GetPosition() const
 Vector3 Player::GetFacingDirection() const
 {
     return facingDirection;
+}
+
+void Player::SetPosition(Vector3 newPosition)
+{
+    position = newPosition;
 }
 
 bool Player::IsAttacking() const

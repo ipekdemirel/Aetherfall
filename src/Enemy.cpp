@@ -33,7 +33,8 @@ Enemy::Enemy(Vector3 startPosition)
 void Enemy::Update(
     float deltaTime,
     Vector3 playerPosition,
-    Vector3 separationForce
+    Vector3 separationForce,
+    bool forceChaseTarget
 )
 {
     visualTime += deltaTime;
@@ -117,7 +118,12 @@ void Enemy::Update(
     // PLAYER DETECTION
     // =====================================================
 
-    if (!alerted)
+    if (forceChaseTarget)
+    {
+        alerted = true;
+        forgetTimer = forgetDuration;
+    }
+    else if (!alerted)
     {
         if (playerDistance <= detectionRange)
         {
@@ -266,7 +272,7 @@ void Enemy::Draw() const
             static_cast<unsigned char>(
                 220.0f *
                 (1.0f - effectProgress)
-                );
+            );
 
         DrawCircle3D(
             Vector3{
@@ -332,19 +338,19 @@ void Enemy::Draw() const
         ? Color{ 255, 238, 180, 255 }
         : alerted
         ? Color{ 92, 35, 124, 255 }
-    : Color{ 48, 42, 72, 255 };
+        : Color{ 48, 42, 72, 255 };
 
     const Color armorColor =
         hitFlashTimer > 0.0f
         ? Color{ 255, 248, 210, 255 }
         : alerted
         ? Color{ 121, 52, 155, 255 }
-    : Color{ 70, 64, 94, 255 };
+        : Color{ 70, 64, 94, 255 };
 
     const Color energyColor =
         alerted
         ? Color{ 255, 69, 126, 255 }
-    : Color{ 169, 89, 255, 255 };
+        : Color{ 169, 89, 255, 255 };
 
     DrawCircle3D(
         Vector3{
@@ -558,8 +564,8 @@ void Enemy::Draw() const
         DrawSphere(
             alertPosition,
             0.09f +
-            0.03f *
-            sinf(visualTime * 8.0f),
+                0.03f *
+                sinf(visualTime * 8.0f),
             energyColor
         );
 
@@ -570,8 +576,8 @@ void Enemy::Draw() const
                 position.z
             },
             0.88f +
-            0.06f *
-            sinf(visualTime * 5.0f),
+                0.06f *
+                sinf(visualTime * 5.0f),
             Vector3{ 1.0f, 0.0f, 0.0f },
             90.0f,
             Fade(energyColor, 0.55f)

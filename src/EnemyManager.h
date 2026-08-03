@@ -16,8 +16,17 @@ public:
 
     void Update(
         float deltaTime,
-        const Vector3& playerPosition
+        const Vector3& targetPosition,
+        bool forceChaseTarget = false
     );
+
+    void UpdateDefense(
+        float deltaTime,
+        const Vector3& playerPosition,
+        const Vector3& corePosition
+    );
+
+    void StartDefense(int waveCount);
 
     void Draw() const;
 
@@ -31,8 +40,20 @@ public:
     bool IsWaitingForNextWave() const;
     float GetNextWaveTimer() const;
 
+    int GetTotalWaves() const;
+    bool IsDefenseComplete() const;
+
 private:
     void SpawnCurrentWave();
+
+    void UpdateEnemies(
+        float deltaTime,
+        const Vector3& targetPosition,
+        bool forceChaseTarget,
+        const Vector3* defensePlayerPosition
+    );
+
+    void UpdateWaveSystem(float deltaTime);
 
     bool AreAllEnemiesDefeated() const;
 
@@ -47,4 +68,8 @@ private:
     float nextWaveTimer;
 
     bool waitingForNextWave;
+
+    bool defenseMode;
+    bool defenseComplete;
+    int totalWaves;
 };

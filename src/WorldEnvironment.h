@@ -1,5 +1,7 @@
 #pragma once
 
+#include <raylib.h>
+
 class WorldEnvironment
 {
 public:
@@ -10,6 +12,11 @@ public:
     void Draw(
         int currentLevel,
         bool bossFightActive
+    ) const;
+
+    bool IsHazardAt(
+        int currentLevel,
+        Vector3 position
     ) const;
 
 private:

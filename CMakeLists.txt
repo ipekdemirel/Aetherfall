@@ -78,7 +78,11 @@ add_executable(Aetherfall
 
     src/WorldEnvironment.h
     src/WorldEnvironment.cpp
-)
+
+    src/DefenseCore.h
+    src/DefenseCore.cpp
+
+ "src/DefenseCore.h" "src/DefenseCore.cpp")
 
 target_include_directories(Aetherfall
     PRIVATE

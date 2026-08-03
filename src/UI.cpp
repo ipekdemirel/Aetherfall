@@ -401,7 +401,13 @@ namespace UI
         );
 
         const char* waveText =
-            TextFormat(
+            enemyManager.GetTotalWaves() > 0
+            ? TextFormat(
+                "WAVE %d / %d",
+                enemyManager.GetCurrentWave(),
+                enemyManager.GetTotalWaves()
+            )
+            : TextFormat(
                 "WAVE %d",
                 enemyManager.GetCurrentWave()
             );

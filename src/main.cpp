@@ -6,14 +6,15 @@
 
 #include "AetherAltar.h"
 #include "AetherCore.h"
+#include "AetherShatteredSeal_LEVEL2_V6.h"
 #include "Boss.h"
 #include "BossHUD.h"
 #include "CombatSystem.h"
 #include "CoinManager.h"
+#include "DefenseCore.h"
 #include "EnemyManager.h"
 #include "ExitDoor.h"
 #include "GameState.h"
-#include "KeyItem.h"
 #include "Player.h"
 #include "ScoreManager.h"
 #include "Shop.h"
@@ -487,7 +488,6 @@ int main()
     Player player;
 
     std::vector<AetherAltar> altars;
-    std::vector<KeyItem> keys;
 
     // =====================================================
     // LEVEL 1 AETHER ALTARS
@@ -506,7 +506,7 @@ int main()
     );
 
     const int totalAltars = 3;
-    const int totalKeys = 3;
+    const int totalDefenseWaves = 3;
 
     // =====================================================
     // LEVEL 1 EXIT DOOR
@@ -538,13 +538,13 @@ int main()
     bool bossRewardGranted = false;
 
     AetherCore aetherCore;
+    DefenseCore defenseCore;
+    AetherSealbreaker aetherSealbreaker;
 
     GameState gameState =
         GameState::Playing;
 
     int currentLevel = 1;
-
-    int levelStartScore = 0;
 
     const Vector3 cameraOffset{
         0.0f,
@@ -581,7 +581,11 @@ int main()
     const float cameraShakeDuration = 0.10f;
     const float cameraShakeStrength = 0.18f;
 
-    int collectedKeys = 0;
+    float lavaDamageTimer = 0.0f;
+
+    int lastHealedDefenseWave = 0;
+    float levelCompleteAutoTimer = 0.0f;
+
     int activatedAltars = 0;
     int coinCount = 0;
 
@@ -912,8 +916,6 @@ int main()
 
             scoreManager.Reset();
 
-            levelStartScore = 0;
-
             player = Player();
 
             combatSystem =
@@ -932,6 +934,13 @@ int main()
             bossRewardGranted = false;
 
             aetherCore.Reset();
+            defenseCore.Reset(
+                Vector3{
+                    0.0f,
+                    1.25f,
+                    -4.0f
+                }
+            );
 
             altars.clear();
 
@@ -959,8 +968,6 @@ int main()
                 }
             );
 
-            keys.clear();
-
             exitDoor =
                 ExitDoor(
                     Vector3{
@@ -970,7 +977,6 @@ int main()
                     }
                 );
 
-            collectedKeys = 0;
             activatedAltars = 0;
 
             enemyManager.Reset();
@@ -983,6 +989,9 @@ int main()
                 GameState::Playing;
 
             cameraShakeTime = 0.0f;
+            lavaDamageTimer = 0.0f;
+            lastHealedDefenseWave = 0;
+            levelCompleteAutoTimer = 0.0f;
 
             camera.position = {
                 player.GetPosition().x +
@@ -1009,54 +1018,19 @@ int main()
             IsKeyPressed(KEY_ENTER)
             )
         {
-            levelStartScore =
-                scoreManager.GetScore();
-
             currentLevel = 2;
 
             player = Player();
 
             altars.clear();
-
-            keys.clear();
-
-            keys.emplace_back(
-                Vector3{
-                    -14.0f,
-                    0.5f,
-                    6.0f
-                }
-            );
-
-            keys.emplace_back(
-                Vector3{
-                    12.0f,
-                    0.5f,
-                    10.0f
-                }
-            );
-
-            keys.emplace_back(
-                Vector3{
-                    6.0f,
-                    0.5f,
-                    -14.0f
-                }
-            );
-
-            exitDoor =
-                ExitDoor(
-                    Vector3{
-                        -18.0f,
-                        1.5f,
-                        -12.0f
-                    }
-                );
-
-            collectedKeys = 0;
             activatedAltars = 0;
 
             enemyManager.Reset();
+            enemyManager.GetEnemies().clear();
+            aetherSealbreaker.Start();
+
+            lastHealedDefenseWave = 0;
+            levelCompleteAutoTimer = 0.0f;
 
             coinManager.Reset();
 
@@ -1081,6 +1055,76 @@ int main()
                 GameState::Playing;
 
             cameraShakeTime = 0.0f;
+            lavaDamageTimer = 0.0f;
+
+            camera.position = {
+                player.GetPosition().x +
+                cameraOffset.x,
+
+                player.GetPosition().y +
+                cameraOffset.y,
+
+                player.GetPosition().z +
+                cameraOffset.z
+            };
+
+            camera.target =
+                player.GetPosition();
+        }
+
+        // =====================================================
+        // START LEVEL 3 - AETHER TITAN
+        // =====================================================
+
+        if (
+            gameState == GameState::LevelComplete &&
+            currentLevel == 2 &&
+            levelCompleteAutoTimer > 0.0f
+            )
+        {
+            levelCompleteAutoTimer -= deltaTime;
+
+            if (levelCompleteAutoTimer < 0.0f)
+            {
+                levelCompleteAutoTimer = 0.0f;
+            }
+        }
+
+        if (
+            gameState == GameState::LevelComplete &&
+            currentLevel == 2 &&
+            (
+                IsKeyPressed(KEY_ENTER) ||
+                levelCompleteAutoTimer <= 0.0f
+                )
+            )
+        {
+            currentLevel = 3;
+
+            player = Player();
+
+            enemyManager.Reset();
+            coinManager.Reset();
+
+            boss =
+                Boss(
+                    Vector3{
+                        0.0f,
+                        3.3f,
+                        -10.0f
+                    }
+                );
+
+            bossFightActive = true;
+            bossRewardGranted = false;
+
+            aetherCore.Reset();
+
+            gameState =
+                GameState::Playing;
+
+            cameraShakeTime = 0.0f;
+            lavaDamageTimer = 0.0f;
 
             camera.position = {
                 player.GetPosition().x +
@@ -1103,38 +1147,46 @@ int main()
 
         if (gameState == GameState::Playing)
         {
-            shop.Update(
-                player,
-                combatSystem,
-                coinCount
-            );
+            if (currentLevel != 2)
+            {
+                shop.Update(
+                    player,
+                    combatSystem,
+                    coinCount
+                );
+            }
 
             if (!shop.IsOpen())
             {
-                player.Update(
-                    deltaTime
-                );
-
-                if (bossFightActive)
+                if (currentLevel == 2)
                 {
-                    combatSystem.UpdateBoss(
-                        deltaTime,
-                        player,
-                        boss
-                    );
+                    aetherSealbreaker.Update(deltaTime);
                 }
                 else
                 {
-                    enemyManager.Update(
-                        deltaTime,
-                        player.GetPosition()
-                    );
+                    player.Update(deltaTime);
 
-                    combatSystem.Update(
-                        deltaTime,
-                        player,
-                        enemyManager.GetEnemies()
-                    );
+                    if (bossFightActive)
+                    {
+                        combatSystem.UpdateBoss(
+                            deltaTime,
+                            player,
+                            boss
+                        );
+                    }
+                    else
+                    {
+                        enemyManager.Update(
+                            deltaTime,
+                            player.GetPosition()
+                        );
+
+                        combatSystem.Update(
+                            deltaTime,
+                            player,
+                            enemyManager.GetEnemies()
+                        );
+                    }
                 }
             }
 
@@ -1172,6 +1224,32 @@ int main()
                     deltaTime,
                     player.GetPosition()
                 );
+
+            // Level 3'teki parlak lav havuzlari gercek bir tehlikedir.
+            // Hasar aralikli uygulanir; oyuncunun kacmak icin zamani olur.
+            if (
+                !shop.IsOpen() &&
+                currentLevel == 3 &&
+                bossFightActive &&
+                worldEnvironment.IsHazardAt(
+                    currentLevel,
+                    player.GetPosition()
+                )
+                )
+            {
+                lavaDamageTimer -= deltaTime;
+
+                if (lavaDamageTimer <= 0.0f)
+                {
+                    player.TakeDamage(10);
+                    lavaDamageTimer = 0.65f;
+                    cameraShakeTime = 0.14f;
+                }
+            }
+            else
+            {
+                lavaDamageTimer = 0.0f;
+            }
 
             // =================================================
             // LEVEL OBJECTIVE AND EXIT DOOR
@@ -1213,45 +1291,26 @@ int main()
                         activatedAltars == totalAltars
                     );
                 }
-                else
+                else if (currentLevel == 2)
                 {
-                    for (auto& key : keys)
+                    if (aetherSealbreaker.IsComplete())
                     {
-                        key.Update(
-                            deltaTime,
-                            player.GetPosition()
-                        );
-                    }
+                        scoreManager.AddScore(1500);
 
-                    collectedKeys = 0;
+                        levelCompleteAutoTimer = 4.0f;
 
-                    for (const auto& key : keys)
-                    {
-                        if (key.IsCollected())
-                        {
-                            collectedKeys++;
-                        }
-                    }
-
-                    exitDoor.Update(
-                        player.GetPosition(),
-                        collectedKeys == totalKeys
-                    );
-                }
-
-                if (exitDoor.PlayerReachedDoor())
-                {
-                    if (currentLevel == 1)
-                    {
                         gameState =
                             GameState::LevelComplete;
                     }
-                    else
-                    {
-                        // Level 2 kapısı oyunu bitirmez.
-                        // Boss savaşını başlatır.
-                        bossFightActive = true;
-                    }
+                }
+
+                if (
+                    currentLevel == 1 &&
+                    exitDoor.PlayerReachedDoor()
+                    )
+                {
+                    gameState =
+                        GameState::LevelComplete;
                 }
             }
 
@@ -1319,16 +1378,34 @@ int main()
         const Vector3 playerPosition =
             player.GetPosition();
 
+        const Vector3 cameraFocus =
+            currentLevel == 2
+            ? Vector3{
+                0.0f,
+                0.8f,
+                0.0f
+            }
+            : playerPosition;
+
+        // The Titan arena uses a wider tactical camera. This keeps both the
+        // player, the boss and incoming meteor warnings visible at once.
+        const Vector3 activeCameraOffset =
+            currentLevel == 2
+            ? Vector3{ 0.0f, 16.0f, 17.5f }
+            : currentLevel == 3
+            ? Vector3{ 0.0f, 12.5f, 15.5f }
+            : cameraOffset;
+
         const Vector3 desiredCameraPosition{
-            playerPosition.x + cameraOffset.x,
-            playerPosition.y + cameraOffset.y,
-            playerPosition.z + cameraOffset.z
+            cameraFocus.x + activeCameraOffset.x,
+            cameraFocus.y + activeCameraOffset.y,
+            cameraFocus.z + activeCameraOffset.z
         };
 
         camera.target =
             Vector3Lerp(
                 camera.target,
-                playerPosition,
+                cameraFocus,
                 cameraFollowSpeed * deltaTime
             );
 
@@ -1378,54 +1455,53 @@ int main()
         ClearBackground(
             currentLevel == 1
             ? Color{ 9, 13, 23, 255 }
-            : bossFightActive
-            ? Color{ 24, 7, 18, 255 }
-            : Color{ 17, 10, 27, 255 }
+            : currentLevel == 2
+            ? Color{ 7, 24, 18, 255 }
+            : Color{ 28, 8, 5, 255 }
         );
 
-        BeginMode3D(
-            camera
-        );
-
-        worldEnvironment.Draw(
-            currentLevel,
-            bossFightActive
-        );
-
-        player.Draw();
-
-        if (bossFightActive)
+        if (currentLevel == 2)
         {
-            boss.Draw();
-            aetherCore.Draw();
+            aetherSealbreaker.Draw();
         }
         else
         {
-            enemyManager.Draw();
+            BeginMode3D(
+                camera
+            );
 
-            if (currentLevel == 1)
+            worldEnvironment.Draw(
+                currentLevel,
+                bossFightActive
+            );
+
+            player.Draw();
+
+            if (bossFightActive)
             {
-                for (const auto& altar : altars)
-                {
-                    altar.Draw();
-                }
+                boss.Draw();
+                aetherCore.Draw();
             }
             else
             {
-                for (const auto& key : keys)
+                enemyManager.Draw();
+
+                if (currentLevel == 1)
                 {
-                    key.Draw();
+                    for (const auto& altar : altars)
+                    {
+                        altar.Draw();
+                    }
+
+                    exitDoor.Draw();
                 }
             }
 
-            exitDoor.Draw();
+            coinManager.Draw();
+            EndMode3D();
         }
 
-        coinManager.Draw();
-
-        EndMode3D();
-
-        if (!bossFightActive)
+        if (!bossFightActive && currentLevel != 2)
         {
             for (
                 const Enemy& enemy :
@@ -1439,18 +1515,17 @@ int main()
             }
         }
 
-        UI::DrawHUD(
-            player,
-            currentLevel == 1
-            ? "Altars"
-            : "Keys",
-            currentLevel == 1
-            ? activatedAltars
-            : collectedKeys,
-            currentLevel == 1
-            ? totalAltars
-            : totalKeys
-        );
+        if (currentLevel != 2)
+        {
+            UI::DrawHUD(
+                player,
+                currentLevel == 1 ? "Altars" : "Titan",
+                currentLevel == 1
+                    ? activatedAltars
+                    : boss.IsAlive() ? 0 : 1,
+                currentLevel == 1 ? totalAltars : 1
+            );
+        }
 
         if (
             currentLevel == 1 &&
@@ -1470,15 +1545,22 @@ int main()
             }
         }
 
-        UI::DrawScore(
-            scoreManager.GetScore()
-        );
+        if (currentLevel != 2)
+        {
+            UI::DrawScore(
+                scoreManager.GetScore()
+            );
 
-        UI::DrawCoins(
-            coinCount
-        );
+            UI::DrawCoins(
+                coinCount
+            );
+        }
 
-        if (!bossFightActive)
+        if (
+            !bossFightActive &&
+            currentLevel != 2 &&
+            gameState == GameState::Playing
+            )
         {
             UI::DrawWaveInformation(
                 enemyManager
@@ -1529,53 +1611,54 @@ int main()
         // LEVEL NUMBER
         // =====================================================
 
-        const char* levelText =
-            TextFormat(
-                "LEVEL %d",
-                currentLevel
-            );
+        if (currentLevel != 2)
+        {
+            const char* levelText =
+                TextFormat(
+                    "LEVEL %d",
+                    currentLevel
+                );
 
-        const int levelFontSize = 26;
+            const int levelFontSize = 26;
 
-        const int levelTextWidth =
-            MeasureText(
+            const int levelTextWidth =
+                MeasureText(
+                    levelText,
+                    levelFontSize
+                );
+
+            DrawText(
                 levelText,
-                levelFontSize
+                GetScreenWidth() / 2 -
+                levelTextWidth / 2,
+                20,
+                levelFontSize,
+                WHITE
             );
 
-        DrawText(
-            levelText,
-            GetScreenWidth() / 2 -
-            levelTextWidth / 2,
-            20,
-            levelFontSize,
-            WHITE
-        );
+            const char* missionText =
+                currentLevel == 1
+                ? activatedAltars == totalAltars
+                    ? "THE GATE IS OPEN - REACH THE EXIT"
+                    : "AWAKEN THE RUINS - ACTIVATE 3 ALTARS"
+                : bossFightActive
+                    ? "DEFEAT THE TITAN - DODGE METEORS AND LAVA"
+                    : "ENTER THE TITAN ARENA";
 
-        const char* missionText =
-            currentLevel == 1
-            ? activatedAltars == totalAltars
-            ? "THE GATE IS OPEN - REACH THE EXIT"
-            : "AWAKEN THE RUINS - ACTIVATE 3 ALTARS"
-            : bossFightActive
-            ? "DEFEAT THE AETHER TITAN"
-            : "FIND THE SIGILS AND OPEN THE GATE";
+            const int missionFontSize = 18;
 
-        const int missionFontSize = 18;
-
-        DrawText(
-            missionText,
-            GetScreenWidth() / 2 -
-            MeasureText(
+            DrawText(
                 missionText,
-                missionFontSize
-            ) / 2,
-            52,
-            missionFontSize,
-            currentLevel == 1
-            ? SKYBLUE
-            : GOLD
-        );
+                GetScreenWidth() / 2 -
+                MeasureText(
+                    missionText,
+                    missionFontSize
+                ) / 2,
+                52,
+                missionFontSize,
+                currentLevel == 1 ? SKYBLUE : GOLD
+            );
+        }
 
         // =====================================================
         // GAME OVER
@@ -1659,7 +1742,7 @@ int main()
             );
 
             const char* completeText =
-                currentLevel == 1
+                currentLevel < 3
                 ? "LEVEL COMPLETE"
                 : "GAME COMPLETE";
 
@@ -1684,6 +1767,13 @@ int main()
             const char* continueText =
                 currentLevel == 1
                 ? "Press ENTER to Start Level 2"
+                : currentLevel == 2
+                ? TextFormat(
+                    "SHATTERED GATE CROSSED - LEVEL 3 STARTS IN %d",
+                    static_cast<int>(
+                        ceilf(levelCompleteAutoTimer)
+                    )
+                )
                 : "You Defeated the Aether Titan!";
 
             const int continueFontSize = 26;
