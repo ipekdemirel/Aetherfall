@@ -114,20 +114,20 @@ void BossHUD::Draw(const Boss& boss)
     const bool rageModeActive =
         boss.IsRageModeActive();
 
-    // Bar ekranın yaklaşık %58'ini kaplar.
+    // Compact boss HUD: it leaves the arena and the Titan visible.
     int panelWidth =
         static_cast<int>(
-            screenWidth * 0.58f
+            screenWidth * 0.46f
             );
 
     panelWidth =
         std::clamp(
             panelWidth,
-            520,
-            900
+            420,
+            700
         );
 
-    const int panelHeight = 112;
+    const int panelHeight = 92;
 
     const int panelX =
         screenWidth / 2 -
@@ -280,16 +280,16 @@ void BossHUD::Draw(const Boss& boss)
     DrawCenteredText(
         bossName,
         screenWidth / 2,
-        panelY + 13,
+        panelY + 8,
         rageModeActive
-        ? 25
-        : 27,
+        ? 18
+        : 20,
         bossTitleColor
     );
 
     // Boss adının iki yanındaki süs çizgileri
     const int titleLineY =
-        panelY + 28;
+        panelY + 19;
 
     DrawLineEx(
         Vector2{
@@ -302,7 +302,7 @@ void BossHUD::Draw(const Boss& boss)
         },
         Vector2{
             static_cast<float>(
-                panelX + 145
+                panelX + 118
             ),
             static_cast<float>(
                 titleLineY
@@ -320,7 +320,7 @@ void BossHUD::Draw(const Boss& boss)
     DrawLineEx(
         Vector2{
             static_cast<float>(
-                panelX + panelWidth - 145
+                panelX + panelWidth - 118
             ),
             static_cast<float>(
                 titleLineY
@@ -351,12 +351,12 @@ void BossHUD::Draw(const Boss& boss)
         panelX + 34;
 
     const int barY =
-        panelY + 53;
+        panelY + 34;
 
     const int barWidth =
         panelWidth - 68;
 
-    const int barHeight = 28;
+    const int barHeight = 22;
 
     // Bar dış gölgesi
     DrawRectangleRounded(
@@ -609,7 +609,7 @@ void BossHUD::Draw(const Boss& boss)
                 )
         );
 
-    const int healthTextSize = 18;
+    const int healthTextSize = 15;
 
     const int healthTextWidth =
         MeasureText(
@@ -623,7 +623,7 @@ void BossHUD::Draw(const Boss& boss)
         screenWidth / 2 -
         healthTextWidth / 2 +
         2,
-        barY + 5,
+        barY + 3,
         healthTextSize,
         Color{
             0,
@@ -637,7 +637,7 @@ void BossHUD::Draw(const Boss& boss)
         healthText,
         screenWidth / 2 -
         healthTextWidth / 2,
-        barY + 3,
+        barY + 1,
         healthTextSize,
         RAYWHITE
     );
@@ -648,7 +648,23 @@ void BossHUD::Draw(const Boss& boss)
 
     const char* statusText = nullptr;
 
-    if (rageModeActive)
+    Color statusColor = Color{ 174, 163, 190, 255 };
+
+    if (boss.IsCoreExposed())
+    {
+        statusText = "CORE EXPOSED - ATTACK NOW!";
+        statusColor = Color{ 92, 238, 255, 255 };
+    }
+    else if (boss.GetDodgedMeteorCount() > 0)
+    {
+        statusText = TextFormat(
+            "DODGE METEORS  %d / %d  -  BREAK ITS ARMOR",
+            boss.GetDodgedMeteorCount(),
+            boss.GetMeteorsNeededToExposeCore()
+        );
+        statusColor = GOLD;
+    }
+    else if (rageModeActive)
     {
         statusText =
             "PHASE II  -  ENRAGED";
@@ -667,20 +683,8 @@ void BossHUD::Draw(const Boss& boss)
     DrawCenteredText(
         statusText,
         screenWidth / 2,
-        panelY + 87,
-        15,
-        rageModeActive
-        ? Color{
-            255,
-            100,
-            70,
-            255
-        }
-        : Color{
-            174,
-            163,
-            190,
-            255
-        }
+        panelY + 64,
+        14,
+        statusColor
     );
 }

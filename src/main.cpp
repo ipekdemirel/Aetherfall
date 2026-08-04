@@ -6,7 +6,7 @@
 
 #include "AetherAltar.h"
 #include "AetherCore.h"
-#include "AetherShatteredSeal_LEVEL2_V6.h"
+#include "AetherShatteredGate_LEVEL2_V8.h"
 #include "Boss.h"
 #include "BossHUD.h"
 #include "CombatSystem.h"
@@ -1020,7 +1020,10 @@ int main()
         {
             currentLevel = 2;
 
-            player = Player();
+            // Level 2 is a direct continuation of Level 1. Keep the same
+            // Warden, health, armor, speed and shop upgrades.
+            player.SetPosition(Vector3{ 0.0f, 0.5f, 4.5f });
+            player.SetFacingDirection(Vector3{ 0.0f, 0.0f, -1.0f });
 
             altars.clear();
             activatedAltars = 0;
@@ -1101,7 +1104,9 @@ int main()
         {
             currentLevel = 3;
 
-            player = Player();
+            // Carry the same Warden through the shattered gate.
+            player.SetPosition(Vector3{ 0.0f, 0.5f, 5.5f });
+            player.SetFacingDirection(Vector3{ 0.0f, 0.0f, -1.0f });
 
             enemyManager.Reset();
             coinManager.Reset();
@@ -1160,7 +1165,7 @@ int main()
             {
                 if (currentLevel == 2)
                 {
-                    aetherSealbreaker.Update(deltaTime);
+                    aetherSealbreaker.Update(deltaTime, player, camera);
                 }
                 else
                 {
@@ -1241,9 +1246,9 @@ int main()
 
                 if (lavaDamageTimer <= 0.0f)
                 {
-                    player.TakeDamage(10);
-                    lavaDamageTimer = 0.65f;
-                    cameraShakeTime = 0.14f;
+                    player.TakeDamage(7);
+                    lavaDamageTimer = 1.10f;
+                    cameraShakeTime = 0.10f;
                 }
             }
             else
@@ -1382,8 +1387,8 @@ int main()
             currentLevel == 2
             ? Vector3{
                 0.0f,
-                0.8f,
-                0.0f
+                3.6f,
+                -3.2f
             }
             : playerPosition;
 
@@ -1391,7 +1396,7 @@ int main()
         // player, the boss and incoming meteor warnings visible at once.
         const Vector3 activeCameraOffset =
             currentLevel == 2
-            ? Vector3{ 0.0f, 16.0f, 17.5f }
+            ? Vector3{ 0.0f, 4.8f, 20.0f }
             : currentLevel == 3
             ? Vector3{ 0.0f, 12.5f, 15.5f }
             : cameraOffset;
@@ -1462,7 +1467,14 @@ int main()
 
         if (currentLevel == 2)
         {
-            aetherSealbreaker.Draw();
+            BeginMode3D(camera);
+
+            worldEnvironment.Draw(currentLevel, false);
+            aetherSealbreaker.DrawWorld(player);
+            player.Draw();
+
+            EndMode3D();
+            aetherSealbreaker.DrawOverlay();
         }
         else
         {
@@ -1642,7 +1654,9 @@ int main()
                     ? "THE GATE IS OPEN - REACH THE EXIT"
                     : "AWAKEN THE RUINS - ACTIVATE 3 ALTARS"
                 : bossFightActive
-                    ? "DEFEAT THE TITAN - DODGE METEORS AND LAVA"
+                    ? boss.IsCoreExposed()
+                        ? "CORE EXPOSED - ATTACK THE TITAN NOW"
+                        : "DODGE 2 METEORS - EXPOSE THE CORE - STRIKE"
                     : "ENTER THE TITAN ARENA";
 
             const int missionFontSize = 18;

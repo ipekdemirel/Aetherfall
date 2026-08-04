@@ -55,13 +55,19 @@ Boss::Boss(Vector3 startPosition)
     attackWindupTimer(0.0f),
     meleeWindupDuration(0.72f),
     rageMeleeWindupDuration(0.46f),
-    meteorWindupDuration(1.35f),
-    meteorRange(2.5f),
-    meteorDamage(24),
+    meteorWindupDuration(2.25f),
+    meteorRange(2.25f),
+    meteorDamage(18),
     rageSlamWindupDuration(1.15f),
     rageSlamRange(6.0f),
-    rageSlamDamage(40),
-    attacksSinceLastSlam(0)
+    rageSlamDamage(34),
+    attacksSinceLastSlam(0),
+    attacksSinceLastMeteor(1),
+    coreExposed(false),
+    coreExposureTimer(0.0f),
+    coreExposureDuration(4.75f),
+    dodgedMeteorCount(0),
+    meteorsNeededToExposeCore(2)
 {
 }
 
@@ -79,6 +85,28 @@ void Boss::Update(float deltaTime, Player& player)
     UpdateKnockback(deltaTime);
 
     rageModeActive = health <= maxHealth * 0.5f;
+
+    if (coreExposed)
+    {
+        coreExposureTimer -= deltaTime;
+
+        if (coreExposureTimer <= 0.0f)
+        {
+            coreExposureTimer = 0.0f;
+            coreExposed = false;
+            dodgedMeteorCount = 0;
+            attackCooldownTimer = 0.85f;
+        }
+        else
+        {
+            // A successful pair of dodges staggers the Titan. This is the
+            // player's clear damage window, so the boss cannot move or attack.
+            currentAttack = AttackType::None;
+            attackWindupTimer = 0.0f;
+            knockbackVelocity = Vector3{ 0.0f, 0.0f, 0.0f };
+            return;
+        }
+    }
 
     UpdateMovement(deltaTime, player.GetPosition());
     UpdateAttack(deltaTime, player);
@@ -123,6 +151,7 @@ void Boss::UpdateMovement(float deltaTime, Vector3 playerPosition)
     }
 
     if (
+        coreExposed ||
         currentAttack != AttackType::None ||
         distance <= attackRange ||
         distance <= 0.001f
@@ -206,6 +235,13 @@ void Boss::UpdateAttack(float deltaTime, Player& player)
     {
         StartRageSlamAttack();
     }
+    else if (
+        attacksSinceLastMeteor >= 1 ||
+        distance > attackRange
+        )
+    {
+        StartMeteorStrike(player.GetPosition());
+    }
     else if (distance <= attackRange)
     {
         StartMeleeAttack();
@@ -230,7 +266,7 @@ void Boss::StartMeteorStrike(Vector3 playerPosition)
     attackTarget = playerPosition;
     attackTarget.y = 0.0f;
     attackWindupTimer = rageModeActive
-        ? meteorWindupDuration * 0.78f
+        ? meteorWindupDuration * 0.82f
         : meteorWindupDuration;
 }
 
@@ -252,6 +288,7 @@ void Boss::ResolveMeleeAttack(Player& player)
     }
 
     attacksSinceLastSlam++;
+    attacksSinceLastMeteor++;
 }
 
 void Boss::ResolveMeteorStrike(Player& player)
@@ -264,8 +301,18 @@ void Boss::ResolveMeteorStrike(Player& player)
         player.TakeDamage(meteorDamage);
         attackHitRequested = true;
     }
+    else
+    {
+        dodgedMeteorCount++;
+
+        if (dodgedMeteorCount >= meteorsNeededToExposeCore)
+        {
+            ExposeCore();
+        }
+    }
 
     attacksSinceLastSlam++;
+    attacksSinceLastMeteor = 0;
 }
 
 void Boss::ResolveRageSlamAttack(Player& player)
@@ -280,6 +327,16 @@ void Boss::ResolveRageSlamAttack(Player& player)
     }
 
     attacksSinceLastSlam = 0;
+    attacksSinceLastMeteor++;
+}
+
+void Boss::ExposeCore()
+{
+    coreExposed = true;
+    coreExposureTimer = coreExposureDuration;
+    currentAttack = AttackType::None;
+    attackWindupTimer = 0.0f;
+    attackCooldownTimer = 0.0f;
 }
 
 void Boss::DrawAttackWarning() const
@@ -291,9 +348,13 @@ void Boss::DrawAttackWarning() const
 
     if (currentAttack == AttackType::MeteorStrike)
     {
+        const float activeMeteorWindup = rageModeActive
+            ? meteorWindupDuration * 0.82f
+            : meteorWindupDuration;
+
         const float progress = 1.0f -
             Clamp(
-                attackWindupTimer / meteorWindupDuration,
+                attackWindupTimer / activeMeteorWindup,
                 0.0f,
                 1.0f
             );
@@ -314,7 +375,7 @@ void Boss::DrawAttackWarning() const
             Fade(GOLD, 0.72f)
         );
 
-        const float meteorHeight = 9.5f - progress * 8.7f;
+        const float meteorHeight = 11.5f - progress * 10.7f;
         const float meteorRadius = 0.34f + progress * 0.12f;
         const Vector3 meteorPosition{
             attackTarget.x,
@@ -374,7 +435,9 @@ void Boss::Draw() const
         ? Color{ 48, 30, 29, 255 }
         : Color{ 38, 38, 46, 255 };
 
-    const Color energyColor = rageModeActive
+    const Color energyColor = coreExposed
+        ? Color{ 95, 238, 255, 255 }
+        : rageModeActive
         ? Color{ 255, 63, 16, 255 }
         : Color{ 171, 64, 255, 255 };
 
@@ -400,7 +463,9 @@ void Boss::Draw() const
     DrawSphere(Vector3{ 0.0f, 1.25f, 0.25f }, 1.55f, stoneColor);
 
     // Glowing Aether heart and cracks.
-    const float corePulse = 0.42f + 0.08f * sinf(animationTime * 5.0f);
+    const float corePulse = coreExposed
+        ? 0.58f + 0.11f * sinf(animationTime * 8.0f)
+        : 0.42f + 0.08f * sinf(animationTime * 5.0f);
     DrawSphere(Vector3{ 0.0f, 0.75f, 1.38f }, corePulse, energyColor);
     DrawSphere(Vector3{ 0.0f, 0.75f, 1.38f }, corePulse * 1.8f, Fade(energyColor, 0.16f));
     DrawCube(Vector3{ 0.0f, -0.05f, 1.34f }, 0.13f, 1.05f, 0.10f, energyColor);
@@ -474,7 +539,10 @@ void Boss::TakeDamage(float damage)
         return;
     }
 
-    health -= damage;
+    // The stone armour still chips under normal attacks, but dodging two
+    // meteors exposes the heart and creates the rewarding damage window.
+    const float damageMultiplier = coreExposed ? 1.75f : 0.22f;
+    health -= damage * damageMultiplier;
     hitFlashTimer = hitFlashDuration;
 
     if (health <= 0.0f)
@@ -526,6 +594,31 @@ float Boss::GetMaxHealth() const
 bool Boss::IsRageModeActive() const
 {
     return rageModeActive;
+}
+
+bool Boss::IsCoreExposed() const
+{
+    return coreExposed;
+}
+
+float Boss::GetCoreExposureRatio() const
+{
+    if (!coreExposed || coreExposureDuration <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    return Clamp(coreExposureTimer / coreExposureDuration, 0.0f, 1.0f);
+}
+
+int Boss::GetDodgedMeteorCount() const
+{
+    return dodgedMeteorCount;
+}
+
+int Boss::GetMeteorsNeededToExposeCore() const
+{
+    return meteorsNeededToExposeCore;
 }
 
 bool Boss::ConsumeAttackHitRequest()

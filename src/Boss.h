@@ -20,6 +20,10 @@ public:
     float GetHealth() const;
     float GetMaxHealth() const;
     bool IsRageModeActive() const;
+    bool IsCoreExposed() const;
+    float GetCoreExposureRatio() const;
+    int GetDodgedMeteorCount() const;
+    int GetMeteorsNeededToExposeCore() const;
     bool ConsumeAttackHitRequest();
 
 private:
@@ -43,6 +47,7 @@ private:
     void ResolveMeleeAttack(Player& player);
     void ResolveMeteorStrike(Player& player);
     void ResolveRageSlamAttack(Player& player);
+    void ExposeCore();
 
     void DrawAttackWarning() const;
 
@@ -86,4 +91,11 @@ private:
     int rageSlamDamage;
 
     int attacksSinceLastSlam;
+    int attacksSinceLastMeteor;
+
+    bool coreExposed;
+    float coreExposureTimer;
+    float coreExposureDuration;
+    int dodgedMeteorCount;
+    int meteorsNeededToExposeCore;
 };

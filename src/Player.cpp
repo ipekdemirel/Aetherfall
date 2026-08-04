@@ -936,6 +936,14 @@ void Player::Update(float deltaTime)
     UpdateModelAnimation(deltaTime);
 }
 
+void Player::UpdateChallengeAnimation(float deltaTime, bool moving)
+{
+    isMoving = moving;
+    isRunning = false;
+    isDashing = false;
+    UpdateModelAnimation(deltaTime);
+}
+
 void Player::UpdateModelAnimation(float deltaTime)
 {
     CharacterAssets& assets =
@@ -1422,6 +1430,16 @@ Vector3 Player::GetFacingDirection() const
 void Player::SetPosition(Vector3 newPosition)
 {
     position = newPosition;
+}
+
+void Player::SetFacingDirection(Vector3 newDirection)
+{
+    newDirection.y = 0.0f;
+
+    if (Vector3Length(newDirection) > 0.001f)
+    {
+        facingDirection = Vector3Normalize(newDirection);
+    }
 }
 
 bool Player::IsAttacking() const

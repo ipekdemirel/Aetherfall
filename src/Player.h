@@ -10,11 +10,13 @@ public:
     Player();
 
     void Update(float deltaTime);
+    void UpdateChallengeAnimation(float deltaTime, bool moving);
     void Draw() const;
 
     Vector3 GetPosition() const;
     Vector3 GetFacingDirection() const;
     void SetPosition(Vector3 newPosition);
+    void SetFacingDirection(Vector3 newDirection);
 
     bool IsAttacking() const;
     float GetAttackProgress() const;
